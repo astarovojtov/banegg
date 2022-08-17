@@ -34,7 +34,29 @@ app.get("/test", async (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  return res.json("Nothing here just yet");
+  //return res.json("Nothing here just yet");
+  return res.send(`<!DOCTYPE html>
+    <html>
+    <head>
+        <title>BanEgg Homepage</title>
+        <meta charset="utf-8" />
+    </head>
+    <body>
+        <h1>Download extension to start the hunt</h1>
+        <a href="/download">Download extension</a>
+        <h2>Installation instructions</h2>
+        <ul>
+          <li>Download the archived file and extract on your PC</li>
+          <li>Go to the browser extensions (chrome://extensions/)</li>
+          <li>Click load unpacked and choose the folder you've extracted .zip to</li>
+          <li>Make sure you have notifications turned on</li>
+        </ul>
+    </body>
+    <html>`)
+});
+
+app.get('/download', (req, res) => {
+  res.sendFile(__dirname + "/extension.zip");
 });
 
 app.post("/hide", async (req, res) => {
