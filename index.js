@@ -250,7 +250,7 @@ app.get("/campaignsUrl", async (req, res) => {
   res.json(campaigns);
 });
 
-app.listen(3001);
+app.listen(process.env.PORT || 5000);
 
 process.on("uncaughtException", (err) => {
   console.log(err);
