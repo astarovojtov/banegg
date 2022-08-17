@@ -1,0 +1,19 @@
+{
+  "name": "banegg",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test",
+    "start": "node index"
+  },
+  "author": "me",
+  "license": "MIT",
+  "dependencies": {
+    "@bananocoin/bananojs": "^2.6.1",
+    "express": "^4.18.1",
+    "postgres": "^3.2.4",
+    "qrcode": "^1.5.1",
+    "sanitize-html": "^2.7.1"
+  }
+}
