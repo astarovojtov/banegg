@@ -1,14 +1,15 @@
 const apiHost = 'https://banegg.herokuapp.com';//'http://localhost:3001'
 
-chrome.storage.sync.get("camps", ({ camps }) => {
+chrome.storage.local.get("camps", ({ camps }) => {
   if (camps) { return; }
   api.get(`${apiHost}/campaignsUrl`)
     .then((camps) => {
-      chrome.storage.sync.set({ camps });
+      chrome.storage.local.set({ camps });
     });
 });
 
-
+console.log('dom', dom);
+console.log('window.dom', window.dom)
 dom.byId("settings").addEventListener("click", function (e) {
   api.getFragment("./fragments/settings.html")
     .then((fragmentString) => {
@@ -16,7 +17,7 @@ dom.byId("settings").addEventListener("click", function (e) {
       settings.classList.add("settings");
       dom.byTagName('section').replaceChildren(settings);
 
-      chrome.storage.sync.get("address", ({ address }) => {
+      chrome.storage.local.get("address", ({ address }) => {
         if (address) {
           document.getElementById("address").value = address;
         }
@@ -46,7 +47,7 @@ dom.byId("home").addEventListener("click", function (e) {
       .addEventListener("click", function (e) {
         api.getFragment("/fragments/campaign.html")
           .then((htmlString) => {
-            const address = chrome.storage.sync.get(
+            const address = chrome.storage.local.get(
               "address",
               ({ address }) => {
                 if (address) {
@@ -64,7 +65,7 @@ dom.byId("home").addEventListener("click", function (e) {
                 const hash = dom.byId("hash").value;
                 const prizepool = dom.byId("prizepool").value;
 
-                chrome.storage.sync.set({ address }); //store users wallet
+                chrome.storage.local.set({ address }); //store users wallet
 
                 api.post(`${apiHost}/hide`, {
                     address: address,
@@ -102,7 +103,7 @@ dom.byId("home").addEventListener("click", function (e) {
       .getElementById("save-settings")
       .addEventListener("click", function (e) {
         const address = document.getElementById("address").value;
-        chrome.storage.sync.set({ address });
+        chrome.storage.local.set({ address });
         const messageStrip = document.createElement("p");
         messageStrip.innerText = "Settings saved";
         document.getElementsByTagName("section").append(p);
@@ -124,7 +125,7 @@ dom.byId("home").addEventListener("click", function (e) {
   // The body of this function will be executed as a content script inside the
   // current page
   function setPageBackgroundColor() {
-    chrome.storage.sync.get("color", ({ color }) => {
+    chrome.storage.local.get("color", ({ color }) => {
       document.body.style.backgroundColor = color;
     });
   }

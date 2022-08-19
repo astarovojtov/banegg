@@ -1,7 +1,7 @@
 let color = "#3aa757";
 const apiHost = 'https://banegg.herokuapp.com'//'http://localhost:3001'
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.sync.set({ color });
+  chrome.storage.local.set({ color });
   console.log("Default background color set to %cgreen", `color: ${color}`);
 });
 
@@ -11,7 +11,7 @@ chrome.runtime.onStartup.addListener(async () => {
   fetch(`${apiHost}/campaignsUrl`)
     .then((res) => res.json())
     .then((camps) => {
-      chrome.storage.sync.set({ camps });
+      chrome.storage.local.set({ camps });
     });
 });
 chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
@@ -27,7 +27,7 @@ chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
     return;
   }
 
-  chrome.storage.sync.get("camps", ({ camps }) => {
+  chrome.storage.local.get("camps", ({ camps }) => {
     if (!camps || camps.length === 0) {
       return;
     }
@@ -37,12 +37,16 @@ chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: host, hash: hash }),
     })
-      .then((res) => res.json())
+      .then((res) =>{ 
+        if (!res.ok) { throw new Error('Something bad happened')}
+        return res.json()
+      })
       .then((camps) => {
-        if (camps.camps.length === 1) {
-          console.log("Found! ", camps.camps[0]);
+        if (camps.length === 1) {
+          
+          console.log("Found! ", camps[0]);
           chrome.notifications.create(
-            `campaign-${camps.camps[0].id}`,
+            `campaign-${camps[0].id}`,
             {
               type: "basic",
               message: "You have found a BanEgg! Click to grab",

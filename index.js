@@ -56,7 +56,26 @@ app.get("/", (req, res) => {
 });
 
 app.get('/download', (req, res) => {
-  res.sendFile(__dirname + "/extension.zip");
+  const file_system = require('fs');
+  const archiver = require('archiver');
+  var output = file_system.createWriteStream('./extension/extension.zip');
+
+  var archive = archiver('zip');
+  archive.on('error', function(err){
+      throw err;
+  });
+
+  output.on('close', function () {
+    console.log(archive.pointer() + ' total bytes');
+    console.log('archiver has been finalized and the output file descriptor has closed.');
+    res.sendFile(__dirname + "/extension/extension.zip");
+  });
+
+  archive.pipe(output);
+
+  // append files from a sub-directory, putting its contents at the root of archive
+  archive.directory('./extension', false);
+  archive.finalize();  
 });
 
 app.post("/hide", async (req, res) => {
