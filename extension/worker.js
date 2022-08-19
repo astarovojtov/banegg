@@ -1,5 +1,6 @@
 let color = "#3aa757";
-const apiHost = 'https://banegg.herokuapp.com'//'http://localhost:3001'
+// const apiHost = 'https://banegg.herokuapp.com';
+const apiHost = 'http://localhost:5000'
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ color });
   console.log("Default background color set to %cgreen", `color: ${color}`);
@@ -42,23 +43,24 @@ chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
         return res.json()
       })
       .then((camps) => {
-        if (camps.length === 1) {
-          
-          console.log("Found! ", camps[0]);
-          chrome.notifications.create(
-            `campaign-${camps[0].id}`,
-            {
-              type: "basic",
-              message: "You have found a BanEgg! Click to grab",
-              title: "FOUND!",
-              iconUrl: "/icons/eggs.png",
-              buttons: [{ title: "Grab" }, { title: "Ignore" }],
-            },
-            () => {
-              console.log("notification created");
-            }
-          );
+        if (!camps.camps || camps.camps.length !== 1) {
+          return;
         }
+        console.log("Found! ", camps.camps[0]);
+        
+        chrome.notifications.create(
+          `campaign-${camps.camps[0].id}`,
+          {
+            type: "basic",
+            message: "You have found a BanEgg! Click to grab",
+            title: "FOUND!",
+            iconUrl: "/icons/eggs.png",
+            buttons: [{ title: "Grab" }, { title: "Ignore" }],
+          },
+          () => {
+            console.log("notification created");
+          }
+        );
       })
       .catch((e) => console.log(e));
   });
@@ -66,16 +68,21 @@ chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
 chrome.notifications.onButtonClicked.addListener(
   (notificationId, buttonIndex) => {
     console.log(`Button ${buttonIndex} clicked`);
-    if (buttonIndex === 0) {
-      console.log("Querying -find");
+    if (buttonIndex !== 0) { return; }
+      
       //send request to claim tha found egg
+      const address = await chrome.storage.local.get('address');
+      if (!address ) {
+        console.log('Address was not provided');
+        return;
+      }
+      
       fetch(`${apiHost}/find`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: notificationId.split("-").pop(),
-          address:
-            "ban_3jo4o7j3z398xy4ywmjnaoqwfo1otnyrr4ubmd3pyshggf34hhcreuc6zkcw",
+          address: address,
         }),
       })
         .then((res) => res.json())
@@ -94,7 +101,6 @@ chrome.notifications.onButtonClicked.addListener(
           }
         });
     }
-  }
 );
 // chrome.notifications.onClicked.addListener((notificationId) => {
 //   console.log(`Notifiaction ${notificationId} clicked`);

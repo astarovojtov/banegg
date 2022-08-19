@@ -65,13 +65,13 @@ function getCampaignById(id) {
   return sql`select * from campaigns where id = ${id}`;
 }
 function getCampaignsByUrl(url) {
-  console.log(`select * from campaigns where url LIKE ${url + "%"}`);
   return sql`select * from campaigns where url LIKE ${"%" + url + "%"}`;
 }
+
 function getCampaignsByUrlEgg(url, egg) {
   return sql`select * from campaigns where url LIKE ${
     "%" + url + "%"
-  } and egg = ${egg}`;
+  } and egg = ${egg} and status = 'live'`;
 }
 function getCampaigns() {
   return sql`select * from campaigns`;

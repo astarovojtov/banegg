@@ -234,16 +234,25 @@ app.get("/qwe", (req, res) => {
 app.post("/find", async (req, res) => {
   const campId = req.body.id;
   const clientWallet = req.body.address;
+  
+  const bAddressValid = await ban.getBananoAccountValidationInfo(clientWallet)
+    .valid;
   if (!campId) {
     return res.status(400).json({ error: "No campaign id provided" });
   }
+  
+  if (!bAddressValid) {
+    console.log("Invalid BAN Address");
+    return res.status(400).json({ error: "Invalid BAN Address" });
+  }
+
   const campaign = await sql.getCampaignById(campId);
   if (campaign[0].claim_amnt <= 0) {
     return res
       .status(400)
       .json({ error: "This egg was already found by someone" });
   }
-  //TODO: check campaign status is 'live'
+  
   if (campaign[0].status !== "live") {
     console.log(campaign[0]);
     return res.status(400).json({ error: "No live campaigns found" });
@@ -255,9 +264,9 @@ app.post("/find", async (req, res) => {
     1,
     clientWallet,
     campaign[0].prizepool / campaign[0].claim_amnt
-  );
+  ).catch(e => console.log(e));
   if (!trxHash) {
-    res.status(400).json({ error: "Something went wrong" });
+    return res.status(400).json({ error: "Something went wrong" });
   }
   //2. Decrease claim amount
   const result = await sql.countClaim(campId);

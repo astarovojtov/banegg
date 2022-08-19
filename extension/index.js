@@ -1,4 +1,5 @@
-const apiHost = 'https://banegg.herokuapp.com';//'http://localhost:3001'
+//const apiHost = 'https://banegg.herokuapp.com';
+const apiHost = 'http://localhost:5000'
 
 chrome.storage.local.get("camps", ({ camps }) => {
   if (camps) { return; }
@@ -8,8 +9,6 @@ chrome.storage.local.get("camps", ({ camps }) => {
     });
 });
 
-console.log('dom', dom);
-console.log('window.dom', window.dom)
 dom.byId("settings").addEventListener("click", function (e) {
   api.getFragment("./fragments/settings.html")
     .then((fragmentString) => {
@@ -69,7 +68,7 @@ dom.byId("home").addEventListener("click", function (e) {
 
                 api.post(`${apiHost}/hide`, {
                     address: address,
-                    url: url,
+                    url: new URL(url).host,
                     hash: hash,
                     prizepool: prizepool,
                     claim_amnt: 1,
