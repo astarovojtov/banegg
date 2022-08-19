@@ -1,6 +1,6 @@
 let color = "#3aa757";
-// const apiHost = 'https://banegg.herokuapp.com';
-const apiHost = 'http://localhost:5000'
+const apiHost = 'https://banegg.herokuapp.com';
+//const apiHost = 'http://localhost:5000'
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ color });
   console.log("Default background color set to %cgreen", `color: ${color}`);
@@ -76,7 +76,7 @@ chrome.notifications.onButtonClicked.addListener(
         console.log('Address was not provided');
         return;
       }
-      
+
       fetch(`${apiHost}/find`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
