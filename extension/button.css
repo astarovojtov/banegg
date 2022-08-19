@@ -1,0 +1,31 @@
+body {
+  width: 280px;
+}
+nav {
+  display: flex;
+  justify-content: space-between;
+}
+
+nav img {
+  cursor: pointer;
+}
+
+nav img:hover {
+  opacity: 0.7;
+}
+button {
+  outline: none;
+  margin: 10px;
+  border: none;
+  border-radius: 2px;
+  box-shadow: 1px 1px lightgrey;
+  }
+  
+  button.current {
+    box-shadow: 0 0 0 2px white,
+                0 0 0 4px black;
+  }
+
+  .invisible {
+    display: none;
+  }

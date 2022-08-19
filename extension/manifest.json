@@ -1,0 +1,40 @@
+{
+    "name": "BanEgg",
+    "description": "",
+    "version": "1.0",
+    "manifest_version": 3,
+    "background": {
+        "service_worker": "worker.js"
+    },
+    "permissions": [
+      "storage",
+      "scripting",
+      "tabs",
+      "notifications"
+    ],
+    "host_permissions": [
+      "http://*/*",
+      "https://*/*"
+    ],
+    "content_scripts": [
+      {
+        "matches": ["*://*/*"],
+        "js": ["index.js"]
+      }
+    ],
+    "action": {
+      "default_popup": "index.html",
+      "default_icon": {
+        "16": "/icons/eggs.png",
+        "32": "/icons/eggs.png",
+        "48": "/icons/eggs.png",
+        "128": "/icons/eggs.png"
+      }
+    },
+    "icons": {
+      "16": "/icons/eggs.png",
+      "32": "/icons/eggs.png",
+      "48": "/icons/eggs.png",
+      "128": "/icons/eggs.png"
+    }
+  }

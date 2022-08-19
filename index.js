@@ -159,8 +159,8 @@ app.post("/check-campaign-payment", async (req, res) => {
         //Recieve pending
         ban
           .receiveBananoDepositsForSeed(
-            "8020A64CF7B880550E9BC44EA02BE6D63C5F3940BEA430BB0D186A3CA904CB85",
-            0,
+            seed,
+            1,
             "ban_1bananobh5rat99qfgt1ptpieie5swmoth87thi74qgbfrij7dcgjiij94xr" /* representative */
           )
           .then((res) => {
@@ -187,6 +187,7 @@ app.post("/check-campaign-payment", async (req, res) => {
               .updateCampaignStatus({ id: campId, status: "live" })
               .then((res) => {
                 console.log("Successfull payment. Campaign is live");
+                res.send({ message: "Payment success. BanEgg is hidden"})
               });
           });
 
