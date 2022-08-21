@@ -1,6 +1,6 @@
 let color = "#3aa757";
-const apiHost = 'https://banegg.herokuapp.com';
-//const apiHost = 'http://localhost:5000'
+const apiHost = "https://banegg.herokuapp.com";
+//const apiHost = "http://localhost:5000";
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ color });
   console.log("Default background color set to %cgreen", `color: ${color}`);
@@ -38,16 +38,18 @@ chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: host, hash: hash }),
     })
-      .then((res) =>{ 
-        if (!res.ok) { throw new Error('Something bad happened')}
-        return res.json()
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Something bad happened");
+        }
+        return res.json();
       })
       .then((camps) => {
         if (!camps.camps || camps.camps.length !== 1) {
           return;
         }
         console.log("Found! ", camps.camps[0]);
-        
+
         chrome.notifications.create(
           `campaign-${camps.camps[0].id}`,
           {
@@ -66,41 +68,43 @@ chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
   });
 });
 chrome.notifications.onButtonClicked.addListener(
-  (notificationId, buttonIndex) => {
+  async (notificationId, buttonIndex) => {
     console.log(`Button ${buttonIndex} clicked`);
-    if (buttonIndex !== 0) { return; }
-      
-      //send request to claim tha found egg
-      const address = await chrome.storage.local.get('address');
-      if (!address ) {
-        console.log('Address was not provided');
-        return;
-      }
-
-      fetch(`${apiHost}/find`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: notificationId.split("-").pop(),
-          address: address,
-        }),
-      })
-        .then((res) => res.json())
-        .then((res) => {
-          if (!!res.hash) {
-            console.log("Claimed!");
-            chrome.notifications.create(
-              `campaign-claim-${notificationId.split("-").pop()}`,
-              {
-                type: "basic",
-                message: "BanEgg reward sent",
-                title: "CLAIMED!",
-                iconUrl: "/icons/eggs.png",
-              }
-            );
-          }
-        });
+    if (buttonIndex !== 0) {
+      return;
     }
+
+    //send request to claim tha found egg
+    const address = await chrome.storage.local.get("address");
+    if (!address) {
+      console.log("Address was not provided");
+      return;
+    }
+
+    fetch(`${apiHost}/find`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: notificationId.split("-").pop(),
+        address: address,
+      }),
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (!!res.hash) {
+          console.log("Claimed!");
+          chrome.notifications.create(
+            `campaign-claim-${notificationId.split("-").pop()}`,
+            {
+              type: "basic",
+              message: "BanEgg reward sent",
+              title: "CLAIMED!",
+              iconUrl: "/icons/eggs.png",
+            }
+          );
+        }
+      });
+  }
 );
 // chrome.notifications.onClicked.addListener((notificationId) => {
 //   console.log(`Notifiaction ${notificationId} clicked`);

@@ -52,35 +52,46 @@ app.get("/", (req, res) => {
           <li>Make sure you have notifications turned on</li>
         </ul>
     </body>
-    <html>`)
+    <html>`);
 });
 
-app.get('/download', (req, res) => {
-  const file_system = require('fs');
-  const archiver = require('archiver');
-  var output = file_system.createWriteStream('./extension/extension.zip');
+app.get("/download", (req, res) => {
+  const file_system = require("fs");
+  const archiver = require("archiver");
+  var output = file_system.createWriteStream("./extension/extension.zip");
 
-  var archive = archiver('zip');
-  archive.on('error', function(err){
-      throw err;
+  var archive = archiver("zip");
+  archive.on("error", function (err) {
+    throw err;
   });
 
-  output.on('close', function () {
-    console.log(archive.pointer() + ' total bytes');
-    console.log('archiver has been finalized and the output file descriptor has closed.');
+  output.on("close", function () {
+    console.log(archive.pointer() + " total bytes");
+    console.log(
+      "archiver has been finalized and the output file descriptor has closed."
+    );
     res.sendFile(__dirname + "/extension/extension.zip");
   });
 
   archive.pipe(output);
 
   // append files from a sub-directory, putting its contents at the root of archive
-  archive.directory('./extension', false);
-  archive.finalize();  
+  archive.directory("./extension", false);
+  archive.finalize();
+});
+
+app.get("/users", async (req, res) => {
+  res.json(await sql.getUsers());
+});
+
+app.get("/pending", async (req, res) => {
+  ban.getAccountsPending([banEggWallet], 10).then((pending) => {
+    res.json(pending);
+  });
 });
 
 app.post("/hide", async (req, res) => {
   const body = req.body;
-  console.log(req.body);
   //{ address, url, claim_amnt, prizepool, hash /* optional */ }
 
   /***** check trusted event? *****/
@@ -95,8 +106,8 @@ app.post("/hide", async (req, res) => {
   }
   //check ban address valid
   if (!body.address) {
-    console.log("Invalid BAN address");
-    return res.status(400).json({ error: "Invalid BAN address" });
+    console.log("BAN address was not provided");
+    return res.status(400).json({ error: "BAN address was not provided" });
   }
 
   const bAddressValid = await ban.getBananoAccountValidationInfo(body.address)
@@ -112,7 +123,13 @@ app.post("/hide", async (req, res) => {
     return res.status(400).json({ error: "Insufficent funds" });
   }
   //Create campaign
-  const user = await sql.getUser(body.address);
+
+  //Create user if doesn't exist
+  let user = await sql.getUser(body.address);
+  if (user.length === 0) {
+    const user = await sql.createUser(body.address);
+    console.log("New user created => ", user);
+  }
 
   let newCamp = await sql.createCampaign({
     url: body.url,
@@ -166,6 +183,12 @@ app.post("/check-campaign-payment", async (req, res) => {
     console.log("Querying BanEgg wallet pending");
     ban.getAccountsPending([banEggWallet], 10).then((response) => {
       // look up for trx from clients wallet with amountSliced that has if of the campaign
+
+      //andle account has no pengind otherwise Object.keys fails
+      if (typeof response.blocks === "string") {
+        console.log("No pendings found");
+        return;
+      }
       const oPending = response.blocks[banEggWallet];
       const found = Object.keys(oPending).find(
         (key) => oPending[key] === paymentAmount
@@ -173,7 +196,7 @@ app.post("/check-campaign-payment", async (req, res) => {
       console.log("Found payment, clearing polling");
       if (found) {
         clearInterval(interval);
-        res.json(found);
+        // res.json(found);
 
         //Recieve pending
         ban
@@ -182,7 +205,7 @@ app.post("/check-campaign-payment", async (req, res) => {
             1,
             "ban_1bananobh5rat99qfgt1ptpieie5swmoth87thi74qgbfrij7dcgjiij94xr" /* representative */
           )
-          .then((res) => {
+          .then((banApiResult) => {
             /* response
             {
               pendingCount: 8,
@@ -201,12 +224,14 @@ app.post("/check-campaign-payment", async (req, res) => {
               receiveMessage: 'received 8 blocks.'
             }*/
             console.log("Pending recieved");
-            console.log(res);
+            console.log(banApiResult);
             sql
               .updateCampaignStatus({ id: campId, status: "live" })
-              .then((res) => {
+              .then((sqlResult) => {
                 console.log("Successfull payment. Campaign is live");
-                res.send({ message: "Payment success. BanEgg is hidden"})
+                return res.send({
+                  message: "Payment success. BanEgg is hidden",
+                });
               });
           });
 
@@ -218,29 +243,17 @@ app.post("/check-campaign-payment", async (req, res) => {
   }
 });
 
-app.get("/qwe", (req, res) => {
-  ban
-    .receiveBananoDepositsForSeed(
-      seed,
-      1,
-      "ban_1bananobh5rat99qfgt1ptpieie5swmoth87thi74qgbfrij7dcgjiij94xr" /* representative */
-    )
-    .then((result) => {
-      console.log(result);
-      return res.json(result);
-    });
-});
-
 app.post("/find", async (req, res) => {
   const campId = req.body.id;
-  const clientWallet = req.body.address;
-  
+  const clientWallet = req.body.address.address;
+  console.log("clientWallet", clientWallet, clientWallet.length);
+  console.log(req.body);
   const bAddressValid = await ban.getBananoAccountValidationInfo(clientWallet)
     .valid;
   if (!campId) {
     return res.status(400).json({ error: "No campaign id provided" });
   }
-  
+
   if (!bAddressValid) {
     console.log("Invalid BAN Address");
     return res.status(400).json({ error: "Invalid BAN Address" });
@@ -252,19 +265,21 @@ app.post("/find", async (req, res) => {
       .status(400)
       .json({ error: "This egg was already found by someone" });
   }
-  
+
   if (campaign[0].status !== "live") {
     console.log(campaign[0]);
     return res.status(400).json({ error: "No live campaigns found" });
   }
 
   //1. Send ban returns trx hash
-  const trxHash = await ban.sendBananoWithdrawalFromSeed(
-    seed,
-    1,
-    clientWallet,
-    campaign[0].prizepool / campaign[0].claim_amnt
-  ).catch(e => console.log(e));
+  const trxHash = await ban
+    .sendBananoWithdrawalFromSeed(
+      seed,
+      1,
+      clientWallet,
+      campaign[0].prizepool / campaign[0].claim_amnt
+    )
+    .catch((e) => console.log(e));
   if (!trxHash) {
     return res.status(400).json({ error: "Something went wrong" });
   }

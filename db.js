@@ -50,10 +50,10 @@ function insertDummyCampaigns() {
 }
 function createUser(address) {
   const newUser = { address: address };
-  return `insert into users ${sql(newUser)}`;
+  return sql`insert into users ${sql(newUser)} returning *`;
 }
 function deleteUser(address) {
-  return `delete * from users where address = ${address}`;
+  return sql`delete * from users where address = ${address}`;
 }
 function getUser(address) {
   return sql`select * from users where address = ${address}`;
