@@ -92,12 +92,11 @@ chrome.notifications.onButtonClicked.addListener(
       .then((res) => res.json())
       .then((res) => {
         if (!!res.hash) {
-          console.log("Claimed!");
           chrome.notifications.create(
             `campaign-claim-${notificationId.split("-").pop()}`,
             {
               type: "basic",
-              message: "BanEgg reward sent",
+              message: `BanEgg reward sent. Transaction hash ${res.hash}`,
               title: "CLAIMED!",
               iconUrl: "/icons/eggs.png",
             }
@@ -106,9 +105,7 @@ chrome.notifications.onButtonClicked.addListener(
       });
   }
 );
-// chrome.notifications.onClicked.addListener((notificationId) => {
-//   console.log(`Notifiaction ${notificationId} clicked`);
-// });
+
 chrome.tabs.onActivated.addListener(async () => {});
 
 async function getCurrentTab() {

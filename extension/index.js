@@ -78,11 +78,31 @@ document.addEventListener("about-rendered", function (e) {
         dom.byTagName("section").replaceChildren(div);
         /******** Hide button listener *********/
         dom.byId("hide").addEventListener("click", function (e) {
+          document.querySelector('.overlay').classList.remove('invisible');
+          document.querySelector('.loader').classList.remove('invisible');
+
           const address = dom.byId("address").value;
           let url = dom.byId("url").value;
-          const hash = dom.byId("hash").value;
+          let hash = dom.byId("hash").value;
           const prizepool = dom.byId("prizepool").value;
+          
+          if (!address || !address.match('ban_')) {
+            return;
+          }
+          if(!url || url.length < 4) {
+            return;
+          }
 
+          if (!hash || hash.length < 4) {
+            return;
+          }
+
+          if (!prizepool) {
+            return;
+          }
+
+          hash = hash.trim();
+          url = url.trim();
           url = url.match(/http:\/\/|https:\/\//) ? url : "http://" + url;
 
           chrome.storage.local.set({ address }); //store users wallet
@@ -98,29 +118,15 @@ document.addEventListener("about-rendered", function (e) {
             .then((res) => {
               //TODO: Need to check if status is ok before res.json
               //if (res.status === 'ok')
+              document.querySelector('.overlay').classList.add('invisible');
+              document.querySelector('.loader').classList.add('invisible');
+              
               dom.byId("qrCode").classList.remove("invisible");
               const img = dom.createElement("img", {
                 attr: { key: "src", value: res.qr },
               });
               dom.byId("qrCode").append(img);
               setPaymentCountDown();
-              function setPaymentCountDown() {
-                const timeoutDate = new Date();
-                timeoutDate.setMinutes(new Date().getMinutes() + 10);
-                let timeLeft = timeoutDate.getTime() - new Date().getTime();
-                console.log(timeLeft);
-
-                const countdown = setInterval(() => {
-                  timeLeft = timeoutDate.getTime() - new Date().getTime();
-                  let mins = Math.floor((timeLeft / 1000 / 60) % 60);
-                  let secs = Math.floor((timeLeft / 1000) % 60);
-                  if (mins === 0 && secs === 0) {
-                    clearInterval(countdown);
-                  }
-                  document.querySelector(".mins").innerText = mins;
-                  document.querySelector(".secs").innerText = secs;
-                }, 1000);
-              }
 
               api
                 .post(`${apiHost}/check-campaign-payment`, {
@@ -177,4 +183,22 @@ function setPageBackgroundColor() {
   chrome.storage.local.get("color", ({ color }) => {
     document.body.style.backgroundColor = color;
   });
+}
+
+function setPaymentCountDown() {
+  const timeoutDate = new Date();
+  timeoutDate.setMinutes(new Date().getMinutes() + 10);
+  let timeLeft = timeoutDate.getTime() - new Date().getTime();
+  console.log(timeLeft);
+
+  const countdown = setInterval(() => {
+    timeLeft = timeoutDate.getTime() - new Date().getTime();
+    let mins = Math.floor((timeLeft / 1000 / 60) % 60);
+    let secs = Math.floor((timeLeft / 1000) % 60);
+    if (mins === 0 && secs === 0) {
+      clearInterval(countdown);
+    }
+    document.querySelector(".mins").innerText = mins;
+    document.querySelector(".secs").innerText = secs;
+  }, 1000);
 }

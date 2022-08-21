@@ -8,6 +8,7 @@ const app = express();
 const banEggWallet =
   "ban_15ybpg7b6nf6a834jwgo51yyxkg1446i7zn9itf7n17u3b9fcrr3c5nqrkcz";
 const seed = process.env.BAN_SEED;
+const waitingForPaymentCountdown = 10; //10 mins
 ban.bananodeApi.setUrl("https://kaliumapi.appditto.com/api");
 app.use(express.json());
 
@@ -91,6 +92,7 @@ app.get("/pending", async (req, res) => {
 });
 
 app.post("/hide", async (req, res) => {
+  const logger = [];
   const body = req.body;
   //{ address, url, claim_amnt, prizepool, hash /* optional */ }
 
@@ -99,16 +101,19 @@ app.post("/hide", async (req, res) => {
     console.log("No url or hash specified");
     return res.status(400).json({ error: "No url or hash specified" });
   }
+  logger.push(`Url: ${body.url}`);
 
   if (!body.prizepool) {
     console.log("Prize pool not specified");
     return res.status(400).json({ error: "Prize pool not specified" });
   }
+  logger.push(`Prize: ${body.prizepool}`);
   //check ban address valid
   if (!body.address) {
     console.log("BAN address was not provided");
     return res.status(400).json({ error: "BAN address was not provided" });
   }
+  logger.push(`Address: ${body.address}`);
 
   const bAddressValid = await ban.getBananoAccountValidationInfo(body.address)
     .valid;
@@ -116,12 +121,14 @@ app.post("/hide", async (req, res) => {
     console.log("Invalid BAN Address");
     return res.status(400).json({ error: "Invalid BAN Address" });
   }
+  logger.push(`Address: valid`);
   //check ban address has balance >= prizepool
   const addressInfo = await ban.getAccountInfo(body.address);
   if (addressInfo.balance_decimal < body.prizepool) {
     console.log("Insufficent funds");
     return res.status(400).json({ error: "Insufficent funds" });
   }
+  logger.push(`Balance is positive`);
   //Create campaign
 
   //Create user if doesn't exist
@@ -145,14 +152,13 @@ app.post("/hide", async (req, res) => {
 
   const amountRaw = ban.getBananoDecimalAmountAsRaw(body.prizepool); // + newCamp.id;
   let amountSliced = appendCampaignIdToPayment(amountRaw, newCamp.id);
-  console.log(amountSliced);
-
   const clientWallet = body.address;
   const qrString = `ban:${banEggWallet}?amount=${amountSliced}`;
   //append to raws id of
-  console.log(qrString);
+  logger.push(`QR: ${qrString}`);
   const qrCode = QRCode.toDataURL(qrString, (err, url) => {
     //send to client
+    console.log(logger.join(' '))
     return res.send({ qr: url, amountRaw: amountSliced, id: newCamp.id });
   });
 });
@@ -161,10 +167,10 @@ app.post("/check-campaign-payment", async (req, res) => {
   const clientWallet = req.body.address;
   const paymentAmount = req.body.paymentAmount;
   const campId = req.body.id;
-  //Ensure user payed
+
   //Poll hotwallet transactions
   const pollingPaymentFinishedAt = new Date(
-    new Date().setMinutes(new Date().getMinutes() + 10)
+    new Date().setMinutes(new Date().getMinutes() + waitingForPaymentCountdown)
   );
   const interval = setInterval(awaitPayment, 10 * 1000);
   function awaitPayment() {
@@ -174,18 +180,21 @@ app.post("/check-campaign-payment", async (req, res) => {
     );
     if (pollingPaymentFinishedAt < new Date()) {
       console.log(
-        "Polling timed out, pollingPaymentFinishedAt = ",
+        "Polling timed out ",
         pollingPaymentFinishedAt.toLocaleString()
       );
-      clearInterval(interval);
-      return;
+      sql
+        .updateCampaignStatus({ id: campId, status: "no_payment" })
+        .then((sqlResult) => {
+          clearInterval(interval);    
+          return res.status(400).json({ error: 'No payment recieved during 10 minutes'});
+        })
     }
     console.log("Querying BanEgg wallet pending");
     ban.getAccountsPending([banEggWallet], 10).then((response) => {
       // look up for trx from clients wallet with amountSliced that has if of the campaign
-
-      //andle account has no pengind otherwise Object.keys fails
-      if (typeof response.blocks === "string") {
+      //Handle account has no pengind otherwise Object.keys fails
+      if (typeof response.blocks === "string" && response.blocks.length === 0) {
         console.log("No pendings found");
         return;
       }
@@ -193,11 +202,11 @@ app.post("/check-campaign-payment", async (req, res) => {
       const found = Object.keys(oPending).find(
         (key) => oPending[key] === paymentAmount
       );
-      console.log("Found payment, clearing polling");
+      
       if (found) {
+        console.log("Found payment, clearing polling");
         clearInterval(interval);
-        // res.json(found);
-
+        
         //Recieve pending
         ban
           .receiveBananoDepositsForSeed(
@@ -206,25 +215,7 @@ app.post("/check-campaign-payment", async (req, res) => {
             "ban_1bananobh5rat99qfgt1ptpieie5swmoth87thi74qgbfrij7dcgjiij94xr" /* representative */
           )
           .then((banApiResult) => {
-            /* response
-            {
-              pendingCount: 8,
-              pendingBlocks: [
-                '157341F4E9DCC8E2B5D61F8B570217A3FD2A593C1F78F451C2D8842C8AEF91F9',
-                ...
-                'F0B7F0FDD7F1A6747C8743C4E59FCBB9509503EB27EFCBA5D0E4AB495EE0E462'
-              ],
-              receiveCount: 8,
-              receiveBlocks: [
-                'B55FC9D78D9620FB86880836D4B47EF49794A40BD1D78A1F55858E9A9C69286C',
-                ...
-                '2A190C9541BEE0BEFB149F732D71D7EC5A1C5BD250C85FE852DE47FE4B55C2BB'
-              ],
-              pendingMessage: 'pending 8 blocks, of max 10.',
-              receiveMessage: 'received 8 blocks.'
-            }*/
             console.log("Pending recieved");
-            console.log(banApiResult);
             sql
               .updateCampaignStatus({ id: campId, status: "live" })
               .then((sqlResult) => {
@@ -235,7 +226,6 @@ app.post("/check-campaign-payment", async (req, res) => {
               });
           });
 
-        //If nothing recieved during ??? minutes delete campaign
         //Clear interval in 10 minutes ???
         //Set campaign status as 'no payment recieved in 10 mins'
       }
@@ -246,18 +236,19 @@ app.post("/check-campaign-payment", async (req, res) => {
 app.post("/find", async (req, res) => {
   const campId = req.body.id;
   const clientWallet = req.body.address.address;
-  console.log("clientWallet", clientWallet, clientWallet.length);
-  console.log(req.body);
+  const logger = [];
   const bAddressValid = await ban.getBananoAccountValidationInfo(clientWallet)
     .valid;
   if (!campId) {
     return res.status(400).json({ error: "No campaign id provided" });
   }
+  logger.push(`Campaign ID: ${campId}`);
 
   if (!bAddressValid) {
     console.log("Invalid BAN Address");
     return res.status(400).json({ error: "Invalid BAN Address" });
   }
+  logger.push(`Address valid: ${clientWallet}`);
 
   const campaign = await sql.getCampaignById(campId);
   if (campaign[0].claim_amnt <= 0) {
@@ -270,6 +261,7 @@ app.post("/find", async (req, res) => {
     console.log(campaign[0]);
     return res.status(400).json({ error: "No live campaigns found" });
   }
+  logger.push(`Campaign live`);
 
   //1. Send ban returns trx hash
   const trxHash = await ban
@@ -283,6 +275,7 @@ app.post("/find", async (req, res) => {
   if (!trxHash) {
     return res.status(400).json({ error: "Something went wrong" });
   }
+  logger.push(`Trx hash: ${trxHash}`)
   //2. Decrease claim amount
   const result = await sql.countClaim(campId);
   const campStatus = await sql.updateCampaignStatus({
