@@ -16,9 +16,9 @@ chrome.runtime.onStartup.addListener(async () => {
     });
 });
 chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
-  if (changeInfo.status && changeInfo.status !== "completed") {
+  if (changeInfo.status && changeInfo.status !== "loading") {
     console.log(changeInfo);
-    //return;
+    return;
   }
 
   let host = "";
@@ -31,7 +31,11 @@ chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
 
   chrome.storage.local.get("camps", ({ camps }) => {
     if (!camps || camps.length === 0) {
-      return;
+      fetch(`${apiHost}/campaignsUrl`)
+      .then((res) => res.json())
+      .then((camps) => {
+        chrome.storage.local.set({ camps });
+      });
     }
 
     fetch(`${apiHost}/campaigns-by-url-hash`, {
