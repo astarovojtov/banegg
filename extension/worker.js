@@ -17,12 +17,13 @@ chrome.runtime.onStartup.addListener(async () => {
 });
 chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
   if (changeInfo.status && changeInfo.status !== "completed") {
+    console.log(changeInfo);
     //return;
   }
 
   let host = "";
   try {
-    host = tab && new URL(tab.url).host;
+    host = tab && new URL(tab.url).host.replace("www.", "");
     hash = tab && new URL(tab.url).hash.replace("#", "");
   } catch (e) {
     return;
