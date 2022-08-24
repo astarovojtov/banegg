@@ -78,18 +78,18 @@ document.addEventListener("about-rendered", function (e) {
         dom.byTagName("section").replaceChildren(div);
         /******** Hide button listener *********/
         dom.byId("hide").addEventListener("click", function (e) {
-          document.querySelector('.overlay').classList.remove('invisible');
-          document.querySelector('.loader').classList.remove('invisible');
+          document.querySelector(".overlay").classList.remove("invisible");
+          document.querySelector(".loader").classList.remove("invisible");
 
           const address = dom.byId("address").value;
           let url = dom.byId("url").value;
           let hash = dom.byId("hash").value;
           const prizepool = dom.byId("prizepool").value;
-          
-          if (!address || !address.match('ban_')) {
+
+          if (!address || !address.match("ban_")) {
             return;
           }
-          if(!url || url.length < 4) {
+          if (!url || url.length < 4) {
             return;
           }
 
@@ -118,9 +118,9 @@ document.addEventListener("about-rendered", function (e) {
             .then((res) => {
               //TODO: Need to check if status is ok before res.json
               //if (res.status === 'ok')
-              document.querySelector('.overlay').classList.add('invisible');
-              document.querySelector('.loader').classList.add('invisible');
-              
+              document.querySelector(".overlay").classList.add("invisible");
+              document.querySelector(".loader").classList.add("invisible");
+
               dom.byId("qrCode").classList.remove("invisible");
               const img = dom.createElement("img", {
                 attr: { key: "src", value: res.qr },
@@ -176,14 +176,6 @@ fetch("/fragments/about.html")
     const aboutRendered = new Event("about-rendered");
     document.dispatchEvent(aboutRendered);
   });
-
-// The body of this function will be executed as a content script inside the
-// current page
-function setPageBackgroundColor() {
-  chrome.storage.local.get("color", ({ color }) => {
-    document.body.style.backgroundColor = color;
-  });
-}
 
 function setPaymentCountDown() {
   const timeoutDate = new Date();
