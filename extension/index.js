@@ -65,6 +65,15 @@ dom.byId("home") &&
       });
   });
 
+dom.byId("history") &&
+  dom.byId("history").addEventListener("click", function (e) {
+    console.log(e);
+    api.getFragment("./fragments/history.html").then((fragmentString) => {
+      const history = dom.createElement("div", { html: fragmentString });
+      dom.byTagName("section").replaceChildren(history);
+    });
+  });
+
 document.addEventListener("about-rendered", function (e) {
   dom.byId("hide-ban-egg") &&
     dom.byId("hide-ban-egg").addEventListener("click", function (e) {
