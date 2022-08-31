@@ -4,11 +4,14 @@ const QRCode = require("qrcode");
 const sanitize = require("sanitize-html");
 const sql = require("./db");
 const { getCampaigns } = require("./db");
+const jwt = require("jsonwebtoken");
 const app = express();
 const banEggWallet =
   "ban_15ybpg7b6nf6a834jwgo51yyxkg1446i7zn9itf7n17u3b9fcrr3c5nqrkcz";
 const seed = process.env.BAN_SEED;
 const waitingForPaymentCountdown = 10; //10 mins
+const auth = require("./middleware/auth");
+
 ban.bananodeApi.setUrl("https://kaliumapi.appditto.com/api");
 app.use(express.json());
 
@@ -85,12 +88,6 @@ app.get("/users", async (req, res) => {
   res.json(await sql.getUsers());
 });
 
-app.get("/pending", async (req, res) => {
-  ban.getAccountsPending([banEggWallet], 10).then((pending) => {
-    res.json(pending);
-  });
-});
-
 app.post("/hide", async (req, res) => {
   const logger = [];
   const body = req.body;
@@ -158,7 +155,7 @@ app.post("/hide", async (req, res) => {
   logger.push(`QR: ${qrString}`);
   const qrCode = QRCode.toDataURL(qrString, (err, url) => {
     //send to client
-    console.log(logger.join(' '))
+    console.log(logger.join(" "));
     return res.send({ qr: url, amountRaw: amountSliced, id: newCamp.id });
   });
 });
@@ -186,9 +183,11 @@ app.post("/check-campaign-payment", async (req, res) => {
       sql
         .updateCampaignStatus({ id: campId, status: "no_payment" })
         .then((sqlResult) => {
-          clearInterval(interval);    
-          return res.status(400).json({ error: 'No payment recieved during 10 minutes'});
-        })
+          clearInterval(interval);
+          return res
+            .status(400)
+            .json({ error: "No payment recieved during 10 minutes" });
+        });
     }
     console.log("Querying BanEgg wallet pending");
     ban.getAccountsPending([banEggWallet], 10).then((response) => {
@@ -202,11 +201,11 @@ app.post("/check-campaign-payment", async (req, res) => {
       const found = Object.keys(oPending).find(
         (key) => oPending[key] === paymentAmount
       );
-      
+
       if (found) {
         console.log("Found payment, clearing polling");
         clearInterval(interval);
-        
+
         //Recieve pending
         ban
           .receiveBananoDepositsForSeed(
@@ -275,11 +274,13 @@ app.post("/find", async (req, res) => {
   if (!trxHash) {
     return res.status(400).json({ error: "Something went wrong" });
   }
-  logger.push(`Trx hash: ${trxHash}`)
-  //2. Decrease claim amount
-  const result = await sql.countClaim(campId);
+  logger.push(`Trx hash: ${trxHash}`);
+  //2. Decrease claim amount. Do we need it?! Probly not
+  //const result = await sql.countClaim(campId);
   const campStatus = await sql.updateCampaignStatus({
     id: campId,
+    claimed_by: clientWallet,
+    claimed_date: new Date().toISOString(),
     status: "finished",
   });
   return res.json({ status: campStatus, hash: trxHash });
@@ -309,6 +310,61 @@ app.get("/campaignsUrl", async (req, res) => {
   res.json(campaigns);
 });
 
+app.post("/login", async (req, res) => {
+  const clientWallet = req.body.address;
+  ban.getAccountInfo(clientWallet, true /* rep flag */).then((rep) => {
+    const currentRep = rep.representative;
+    let pollingCount = 10;
+    const interval = setInterval(async function () {
+      ban.getAccountInfo(clientWallet, true).then(async (info) => {
+        console.log("Current rep is ", currentRep);
+        console.log("Polling count", pollingCount);
+        console.log("New rep is ", info.representative);
+        if (pollingCount < 0) {
+          clearInterval(interval);
+          return res
+            .status(400)
+            .json({ error: "Polling change representative timed out" });
+        }
+
+        if (currentRep !== info.representative) {
+          clearInterval(interval);
+          const user = await sql.getUser(clientWallet);
+          console.log("user ", user);
+          const token = jwt.sign(
+            { user_id: user[0].id },
+            "s0m3-rand-0mt0-k3nn",
+            {
+              expiresIn: "24h",
+            }
+          );
+          console.log(token);
+          await sql.saveUserToken(user[0].id, token);
+          return res.json({ token: token });
+        }
+
+        pollingCount--;
+      });
+    }, 10 * 1000);
+  });
+});
+
+app.post("/hiddenHistory", auth, async (req, res) => {
+  if (!req.body || !req.body.address) {
+    res.status(400).json({ error: "No address provided" });
+  }
+  const camps = await sql.getUserCampaigns(req.body.address);
+  return res.json(camps);
+});
+
+app.post("/foundEggs", async (req, res) => {
+  if (!req.body || !req.body.address) {
+    res.status(400).json({ error: "No address provided" });
+  }
+  const camps = await sql.getFoundEggs(req.body.address);
+  return res.json(camps);
+});
+
 app.listen(process.env.PORT || 5000);
 
 process.on("uncaughtException", (err) => {
@@ -317,8 +373,6 @@ process.on("uncaughtException", (err) => {
 
 function appendCampaignIdToPayment(raw, campId) {
   let sliced = raw.slice(0, -(campId + "").length);
-  console.log(sliced);
   sliced = sliced.concat(campId);
-  console.log(sliced);
   return sliced;
 }

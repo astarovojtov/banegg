@@ -1,11 +1,8 @@
-const apiHost = "https://banegg.herokuapp.com";
-//const apiHost = "http://localhost:5000";
+// const apiHost = "https://banegg.herokuapp.com";
+const apiHost = "http://localhost:5000";
 const dom = {
   byId: function (id) {
     return document.getElementById(id);
-  },
-  byTagName: function (tagName) {
-    return document.getElementsByTagName(tagName)[0];
   },
   createElement: function (sNodeType, options) {
     let node = document.createElement(sNodeType);
@@ -36,7 +33,7 @@ dom.byId("settings") &&
     api.getFragment("./fragments/settings.html").then((fragmentString) => {
       const settings = dom.createElement("div", { html: fragmentString });
       settings.classList.add("settings");
-      dom.byTagName("section").replaceChildren(settings);
+      dom.byId("banegg-content").replaceChildren(settings);
 
       chrome.storage.local.get("address", ({ address }) => {
         if (address) {
@@ -57,7 +54,7 @@ dom.byId("home") &&
         const home = dom.createElement("div", { html: fragmentString });
         home.classList.add("home");
 
-        dom.byTagName("section").replaceChildren(home);
+        dom.byId("banegg-content").replaceChildren(home);
       })
       .finally(() => {
         const aboutRendered = new Event("about-rendered");
@@ -67,12 +64,57 @@ dom.byId("home") &&
 
 dom.byId("history") &&
   dom.byId("history").addEventListener("click", function (e) {
-    console.log(e);
     api.getFragment("./fragments/history.html").then((fragmentString) => {
       const history = dom.createElement("div", { html: fragmentString });
-      dom.byTagName("section").replaceChildren(history);
+      dom.byId("banegg-content").replaceChildren(history);
+      const historyRendered = new Event("history-rendered");
+      document.dispatchEvent(historyRendered);
     });
   });
+
+document.addEventListener("history-rendered", function (e) {
+  dom.byId("history-hidden-btn") &&
+    dom.byId("history-hidden-btn").addEventListener("click", async (e) => {
+      chrome.storage.local.get("token", ({ token }) => {
+        chrome.storage.local.get("address", ({ address }) => {
+          api
+            .getHiddenHistory(token, address)
+            .then((camps) => {
+              //show camps
+              dom.byId("history-message-strip").innerHTML = "";
+              renderHiddenHistory(camps);
+            })
+            .catch((e) => {
+              //fetch login
+              dom.byId("history-message-strip").innerHTML =
+                "Please specify ban address if you didn't yet and switch representative to authorize the action";
+              dom.byId("history-hidden-btn").setAttribute("disabled", true);
+              api
+                .login(address)
+                .then((res) => {
+                  chrome.storage.local.set({ token: res.token });
+                  dom.byId("history-message-strip").innerHTML =
+                    "Authorized successfully. Please click button once again to check your BanEggs";
+                  dom.byId("history-hidden-btn").removeAttribute("disabled");
+                })
+                .catch();
+            });
+        });
+      });
+    });
+
+  dom.byId("history-found-btn") &&
+    dom.byId("history-found-btn").addEventListener("click", function (e) {
+      chrome.storage.local.get("address", ({ address }) => {
+        api
+          .post(`${apiHost}/foundEggs`, { address: address })
+          .then((camps) => {
+            renderFoundHistory(camps);
+          })
+          .catch((e) => console.log(e));
+      });
+    });
+});
 
 document.addEventListener("about-rendered", function (e) {
   dom.byId("hide-ban-egg") &&
@@ -84,7 +126,7 @@ document.addEventListener("about-rendered", function (e) {
           }
         });
         const div = dom.createElement("div", { html: htmlString });
-        dom.byTagName("section").replaceChildren(div);
+        dom.byId("banegg-content").replaceChildren(div);
         /******** Hide button listener *********/
         dom.byId("hide").addEventListener("click", function (e) {
           document.querySelector(".overlay").classList.remove("invisible");
@@ -167,9 +209,10 @@ document.addEventListener("settings-rendered", function (e) {
     .addEventListener("click", function (e) {
       const address = document.getElementById("address").value;
       chrome.storage.local.set({ address });
+      chrome.storage.local.remove("token");
       const messageStrip = document.createElement("p");
       messageStrip.innerText = "Settings saved";
-      document.getElementsByTagName("section")[0].append(messageStrip);
+      document.getElementById("banegg-content").append(messageStrip);
     });
 });
 
@@ -178,8 +221,8 @@ fetch("/fragments/about.html")
   .then((string) => {
     const div = document.createElement("div");
     div.innerHTML = string;
-    document.getElementsByTagName("section")[0] &&
-      document.getElementsByTagName("section")[0].append(div);
+    document.getElementById("banegg-content") &&
+      document.getElementById("banegg-content").append(div);
   })
   .finally(function (e) {
     const aboutRendered = new Event("about-rendered");
@@ -202,4 +245,80 @@ function setPaymentCountDown() {
     document.querySelector(".mins").innerText = mins;
     document.querySelector(".secs").innerText = secs;
   }, 1000);
+}
+function renderHiddenHistory(camps) {
+  /*
+    claim_amnt: 1
+    egg: "qe12qe"
+    id: 3
+    prizepool: 1
+    status: "live"
+    url: "https://yet-another-ban-faucet.herokuapp.com"
+    user_id: 1
+*/
+  const section = dom.byId("hidden-history");
+  section.innerHTML = "";
+  camps.forEach((camp) => {
+    const card = document.createElement("div");
+    card.classList.add("history-card");
+    card.setAttribute("data-camp-id", camp.id);
+    const header = document.createElement("h2");
+    header.innerHTML = `<span>${camp.url}</span><span>${camp.status}</span>`;
+
+    // const url = document.createElement("p");
+    // url.innerText = `Url: ${camp.url}`;
+
+    const hash = document.createElement("p");
+    hash.innerText = `Hash: ${camp.egg}`;
+
+    const bounty = document.createElement("p");
+    bounty.innerText = `Bounty: ${camp.claim_amnt}`;
+
+    card.append(header);
+    // card.append(url);
+    card.append(hash);
+    card.append(bounty);
+
+    if (camp.status === "finished") {
+      const claimedDate = document.createElement("p");
+      const claimedBy = document.createElement("p");
+      const date =
+        new Date(camp.claimed_date).getTime() === 0
+          ? "Not provided"
+          : new Date(camp.claimed_date).toLocaleDateString();
+      claimedDate.innerText = `Claimed date: ${date}`;
+      claimedBy.innerText = `Claimed by: ${camp.claimed_by}`;
+
+      card.append(claimedDate);
+      card.append(claimedBy);
+    }
+    section.append(card);
+  });
+}
+function renderFoundHistory(camps) {
+  const section = dom.byId("hidden-history");
+  section.innerHTML = "";
+  camps.forEach((camp) => {
+    const card = document.createElement("div");
+    card.classList.add("history-card");
+    card.setAttribute("data-camp-id", camp.id);
+    const header = document.createElement("h2");
+    header.innerHTML = `<span>${camp.url}</span><span>#${camp.egg}</span>`;
+
+    const bounty = document.createElement("p");
+    bounty.innerText = `Bounty: ${camp.claim_amnt}`;
+
+    card.append(header);
+    card.append(bounty);
+
+    const claimedDate = document.createElement("p");
+
+    const date =
+      new Date(camp.claimed_date).getTime() === 0
+        ? "Not provided"
+        : new Date(camp.claimed_date).toLocaleDateString();
+    claimedDate.innerText = `Claimed date: ${date}`;
+    card.append(claimedDate);
+    section.append(card);
+  });
 }

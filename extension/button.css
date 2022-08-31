@@ -75,3 +75,23 @@ button {
       transform: rotate(360deg);
     }
   }
+
+  .history-card {
+    margin: 6pt;
+    border-radius: 3px;
+    box-shadow: 1px 1px 3px rgb(0 0 0 / 30%);
+    padding: 6pt;
+  }
+
+  .history-card p, .history-card h2 {
+    margin: 3pt 0;
+  }
+
+  .history-card h2 {
+    justify-content: space-between;
+    display: flex;
+  }
+  .history-card span:last-child {
+    font-size: 12px;
+    font-weight: normal;
+  }

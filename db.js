@@ -61,6 +61,11 @@ function getUser(address) {
 function getUsers() {
   return sql`select * from users`;
 }
+function saveUserToken(userId, token) {
+  console.log("db -> ");
+  console.log(userId, token);
+  return sql`update users set token = ${token} where id = ${userId}`;
+}
 function getCampaignById(id) {
   return sql`select * from campaigns where id = ${id}`;
 }
@@ -103,6 +108,9 @@ function updateCampaignStatus(campaign) {
 function deleteCampaign(campaign) {
   return sql`delete * campaigns where id = ${campaign.id}`;
 }
+function getFoundEggs(address) {
+  return sql`select * from campaigns where claimed_by = ${address}`;
+}
 module.exports = {
   sql: sql,
   insertDummyUsers: insertDummyUsers,
@@ -122,4 +130,6 @@ module.exports = {
   deleteCampaign: deleteCampaign,
   countClaim: countClaim,
   getAllCampaigns: getAllCampaigns,
+  saveUserToken: saveUserToken,
+  getFoundEggs: getFoundEggs,
 };
