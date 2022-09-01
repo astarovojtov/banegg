@@ -1,6 +1,6 @@
 let color = "#3aa757";
-// const apiHost = "https://banegg.herokuapp.com";
-const apiHost = "http://localhost:5000";
+const apiHost = "https://banegg.herokuapp.com";
+//const apiHost = "http://localhost:5000";
 chrome.runtime.onInstalled.addListener(() => {});
 
 chrome.runtime.onStartup.addListener(async () => {

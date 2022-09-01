@@ -151,4 +151,5 @@ module.exports = {
   saveUserToken: saveUserToken,
   getFoundEggs: getFoundEggs,
   editCampaign: editCampaign,
+  getUserById: getUserById
 };

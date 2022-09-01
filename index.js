@@ -312,7 +312,8 @@ app.delete("/campaigns", async (req, res) => {
   if (camp[0].status === "live") {
     //need to return funds here
     //1. Send ban returns trx hash
-    const eggCreatorWallet = await sql.getUserById(camp[0].user);
+    
+    const eggCreatorWallet = await sql.getUserById(camp[0].user_id);
     if (!eggCreatorWallet) {
       logger.push("Couldn't find creator of the egg");
       console.log(logger.join(", "));
@@ -326,7 +327,7 @@ app.delete("/campaigns", async (req, res) => {
         seed,
         1,
         eggCreatorWallet[0].address,
-        campaign[0].prizepool
+        camp[0].prizepool
       )
       .catch((e) => console.log(e));
 

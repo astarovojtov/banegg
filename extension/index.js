@@ -1,5 +1,5 @@
-// const apiHost = "https://banegg.herokuapp.com";
-const apiHost = "http://localhost:5000";
+const apiHost = "https://banegg.herokuapp.com";
+//const apiHost = "http://localhost:5000";
 const dom = {
   byId: function (id) {
     return document.getElementById(id);
