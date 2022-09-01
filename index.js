@@ -322,6 +322,7 @@ app.delete("/campaigns", async (req, res) => {
     if (camp[0].prizepool === 0) {
       console.log("Nothing to send");
     }
+    console.log(`Sending ${camp[0].prizepool}BAN to ${eggCreatorWallet[0].address}`);
     const trxHash = await ban
       .sendBananoWithdrawalFromSeed(
         seed,
