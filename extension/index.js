@@ -15,6 +15,9 @@ const dom = {
     if (options.html) {
       node.innerHTML = options.html;
     }
+    if (options.class) {
+      node.classList.add(options.class);
+    }
     return node;
   },
 };
@@ -258,66 +261,176 @@ function renderHiddenHistory(camps) {
 */
   const section = dom.byId("hidden-history");
   section.innerHTML = "";
-  camps.forEach((camp) => {
-    const card = document.createElement("div");
-    card.classList.add("history-card");
-    card.setAttribute("data-camp-id", camp.id);
-    const header = document.createElement("h2");
-    header.innerHTML = `<span>${camp.url}</span><span>${camp.status}</span>`;
+  camps.length > 0 &&
+    camps.forEach((camp) => {
+      const card = dom.createElement("div", {
+        class: "history-card",
+        attr: {
+          key: "data-camp-id",
+          value: camp.id,
+        },
+      });
 
-    // const url = document.createElement("p");
-    // url.innerText = `Url: ${camp.url}`;
+      const header = dom.createElement("h2", {
+        html: `<span data-camp-url>${camp.url}</span><span>${camp.status}</span>`,
+      });
+      const hash = dom.createElement("p", {
+        text: `Hash: ${camp.egg}`,
+        attr: {
+          key: "data-camp-hash",
+          value: "",
+        },
+      });
+      const bounty = dom.createElement("p", {
+        text: `Bounty: ${camp.claim_amnt}`,
+      });
 
-    const hash = document.createElement("p");
-    hash.innerText = `Hash: ${camp.egg}`;
+      card.append(header);
+      card.append(hash);
+      card.append(bounty);
 
-    const bounty = document.createElement("p");
-    bounty.innerText = `Bounty: ${camp.claim_amnt}`;
+      if (camp.status === "finished") {
+        const date =
+          new Date(camp.claimed_date).getTime() === 0
+            ? "Not provided"
+            : new Date(camp.claimed_date).toLocaleDateString();
+        const claimedDate = dom.createElement("p", {
+          text: `Claimed date: ${date}`,
+        });
+        const claimedBy = dom.createElement("p", {
+          text: `Claimed by: ${camp.claimed_by}`,
+        });
 
-    card.append(header);
-    // card.append(url);
-    card.append(hash);
-    card.append(bounty);
+        card.append(claimedDate);
+        card.append(claimedBy);
+      }
+      const deleteBtn = dom.createElement("button", { text: "Delete" });
+      const editBtn = dom.createElement("button", { text: "Edit" });
+      deleteBtn.addEventListener("click", function (e) {
+        const card = e.target.parentElement;
+        const popup = dom.createElement("div", { class: "popup" });
+        const message = dom.createElement("p", {
+          text: `Are you sure you want to delete this BanEgg?`,
+        });
+        const okBtn = dom.createElement("button", { text: "Delete" });
+        const cancelBtn = dom.createElement("button", { text: "Cancel" });
 
-    if (camp.status === "finished") {
-      const claimedDate = document.createElement("p");
-      const claimedBy = document.createElement("p");
-      const date =
-        new Date(camp.claimed_date).getTime() === 0
-          ? "Not provided"
-          : new Date(camp.claimed_date).toLocaleDateString();
-      claimedDate.innerText = `Claimed date: ${date}`;
-      claimedBy.innerText = `Claimed by: ${camp.claimed_by}`;
+        popup.append(message);
+        popup.append(okBtn);
+        popup.append(cancelBtn);
+        card.append(popup);
+        deleteBtn.remove();
+        editBtn.remove();
 
-      card.append(claimedDate);
-      card.append(claimedBy);
-    }
-    section.append(card);
-  });
+        okBtn.addEventListener("click", function (e) {
+          api.delete(`${apiHost}/campaigns?id=${camp.id}`).then((res) => {
+            if (res.status === 200) {
+              popup.remove();
+              card.remove();
+            }
+          });
+        });
+        cancelBtn.addEventListener("click", function (e) {
+          e.target.parentElement.remove();
+          card.append(deleteBtn);
+          card.append(editBtn);
+        });
+      });
+      editBtn.addEventListener("click", function (e) {
+        deleteBtn.remove();
+        editBtn.remove();
+        const popup = dom.createElement("div", { class: "popup" });
+        const urlInput = dom.createElement("input", {
+          attr: {
+            key: "value",
+            value: document.querySelector(
+              `[data-camp-id='${camp.id}'] h2 span[data-camp-url]`
+            ).innerText, //camp.url,
+          },
+        });
+        urlInput.setAttribute("data-edit", "url");
+        const eggInput = dom.createElement("input", {
+          attr: {
+            key: "value",
+            value: document
+              .querySelector(`[data-camp-id='${camp.id}'] p[data-camp-hash]`)
+              .innerText.replace("Hash: ", ""), //camp.egg,
+          },
+        });
+        eggInput.setAttribute("data-edit", "hash");
+        const okBtn = dom.createElement("button", { text: "Save" });
+        const cancelBtn = dom.createElement("button", { text: "Cancel" });
+        okBtn.addEventListener("click", function (e) {
+          //update camp
+          const newUrl = document.querySelector("[data-edit=url]").value;
+          const newHash = document.querySelector("[data-edit=hash]").value;
+          api
+            .edit(`${apiHost}/campaigns?id=${camp.id}`, {
+              url: newUrl,
+              hash: newHash,
+            })
+            .then((response) => response.json())
+            .then((r) => {
+              if (!r.error) {
+                document.querySelector(
+                  `[data-camp-id='${camp.id}'] h2 span[data-camp-url]`
+                ).innerText = r[0].url;
+                document.querySelector(
+                  `[data-camp-id='${camp.id}'] p[data-camp-hash]`
+                ).innerText = `Hash: ${r[0].egg}`;
+              }
+
+              card.append(deleteBtn);
+              card.append(editBtn);
+              popup.remove();
+            });
+        });
+        cancelBtn.addEventListener("click", function (e) {
+          e.target.parentElement.remove();
+          card.append(deleteBtn);
+          card.append(editBtn);
+        });
+
+        popup.append(urlInput);
+        popup.append(eggInput);
+        popup.append(okBtn);
+        popup.append(cancelBtn);
+        card.append(popup);
+      });
+      card.append(deleteBtn);
+      card.append(editBtn);
+      section.append(card);
+    });
 }
 function renderFoundHistory(camps) {
   const section = dom.byId("hidden-history");
   section.innerHTML = "";
   camps.forEach((camp) => {
-    const card = document.createElement("div");
-    card.classList.add("history-card");
-    card.setAttribute("data-camp-id", camp.id);
-    const header = document.createElement("h2");
-    header.innerHTML = `<span>${camp.url}</span><span>#${camp.egg}</span>`;
-
-    const bounty = document.createElement("p");
-    bounty.innerText = `Bounty: ${camp.claim_amnt}`;
+    const card = dom.createElement("div", {
+      class: "history-card",
+      attr: {
+        key: "data-camp-id",
+        value: camp.id,
+      },
+    });
+    const header = dom.createElement("h2", {
+      html: `<span>${camp.url}</span><span>#${camp.egg}</span>`,
+    });
+    const bounty = dom.createElement("p", {
+      text: `Bounty: ${camp.claim_amnt}`,
+    });
 
     card.append(header);
     card.append(bounty);
-
-    const claimedDate = document.createElement("p");
 
     const date =
       new Date(camp.claimed_date).getTime() === 0
         ? "Not provided"
         : new Date(camp.claimed_date).toLocaleDateString();
-    claimedDate.innerText = `Claimed date: ${date}`;
+    const claimedDate = dom.createElement("p", {
+      text: `Claimed date: ${date}`,
+    });
+
     card.append(claimedDate);
     section.append(card);
   });

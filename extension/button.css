@@ -95,3 +95,15 @@ button {
     font-size: 12px;
     font-weight: normal;
   }
+
+  .popup {
+    display: block;
+    background-color: rgba(0,0,0,0.5);
+    border-radius: 3px;
+    padding: 10pt;
+  }
+
+  .popup input {
+    display: block;
+    width: 90%;
+  }

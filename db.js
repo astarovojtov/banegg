@@ -58,6 +58,9 @@ function deleteUser(address) {
 function getUser(address) {
   return sql`select * from users where address = ${address}`;
 }
+function getUserById(id) {
+  return sql`select * from users where id = ${id}`;
+}
 function getUsers() {
   return sql`select * from users`;
 }
@@ -85,7 +88,7 @@ function getAllCampaigns() {
   return sql`select url from campaigns where claim_amnt > 0`;
 }
 function countClaim(campaignId) {
-  return sql`update campaigns set claim_amnt = claim_amnt - 1 where id = ${campaignId} returning *`;
+  return sql`update campaigns set prizepool = prizepool - claim_amnt where id = ${campaignId} returning *`;
 }
 async function getUserCampaigns(address) {
   const user = await (await getUser(address)).pop();
@@ -94,19 +97,34 @@ async function getUserCampaigns(address) {
 async function createCampaign(campaign) {
   return sql`insert into campaigns ${sql(campaign)} returning *`;
 }
-function updateCampaign(campaign) {
-  return sql`update campaigns set ${sql(campaign, "url", "egg", "claim_amnt")}
-        where id = ${campaign.id}`;
+async function updateCampaign(campaign) {
+  const camp = await sql`select * from campaigns where id = ${campaign.id}`;
+  const mergedCamp = { ...camp[0], ...campaign };
+  console.log(mergedCamp);
+  return sql`update campaigns set ${sql(
+    mergedCamp,
+    "url",
+    "egg",
+    "claim_amnt",
+    "claimed_by",
+    "claimed_date",
+    "status",
+    "trxHash"
+  )}
+        where id = ${campaign.id} returning *`;
+}
+
+async function editCampaign(campaign) {
+  return sql`update campaigns set url = ${campaign.url}, egg = ${campaign.hash}
+        where id = ${campaign.id} returning *`;
 }
 function updateCampaignStatus(campaign) {
-  console.log(
-    `update campaigns set status = ${campaign.status} where id = ${campaign.id}`
-  );
   return sql`update campaigns set status = ${campaign.status}
         where id = ${campaign.id}`;
 }
-function deleteCampaign(campaign) {
-  return sql`delete * campaigns where id = ${campaign.id}`;
+async function deleteCampaign(campaignId) {
+  const camp = await sql`select * from campaigns where id = ${campaignId}`;
+  return sql`delete from campaigns where id = ${campaignId}`;
 }
 function getFoundEggs(address) {
   return sql`select * from campaigns where claimed_by = ${address}`;
@@ -132,4 +150,5 @@ module.exports = {
   getAllCampaigns: getAllCampaigns,
   saveUserToken: saveUserToken,
   getFoundEggs: getFoundEggs,
+  editCampaign: editCampaign,
 };

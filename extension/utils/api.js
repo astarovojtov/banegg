@@ -17,6 +17,18 @@ const api = {
         console.log(e);
       });
   },
+  delete: function (url) {
+    return fetch(url, {
+      method: "DELETE",
+    });
+  },
+  edit: function (url, body) {
+    return fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  },
   getFragment: function (url) {
     return fetch(url)
       .then((res) => res.text())

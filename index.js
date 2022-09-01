@@ -276,18 +276,90 @@ app.post("/find", async (req, res) => {
   }
   logger.push(`Trx hash: ${trxHash}`);
   //2. Decrease claim amount. Do we need it?! Probly not
-  //const result = await sql.countClaim(campId);
-  const campStatus = await sql.updateCampaignStatus({
+  // const result = await sql.countClaim(campId);
+  const campUpdated = await sql.updateCampaign({
     id: campId,
+    url: campaign[0].url,
+    egg: campaign[0].egg,
     claimed_by: clientWallet,
     claimed_date: new Date().toISOString(),
     status: "finished",
+    hideTrxHash: campaign[0].hideTrxHash,
+    claimTrxHash: trxHash,
   });
-  return res.json({ status: campStatus, hash: trxHash });
+  return res.json({ status: campUpdated.status, hash: trxHash });
 });
 
 app.get("/campaigns", async (req, res) => {
   res.json(await sql.getCampaigns());
+});
+
+app.delete("/campaigns", async (req, res) => {
+  const logger = [];
+  const params = req.query;
+  if (!params.id) {
+    return res.status(400).json({ error: "Campaign id was not provided" });
+  }
+  logger.push(`Requested deletion of campaign ${params.id}`);
+
+  const camp = await sql.getCampaignById(params.id);
+  if (camp[0].status === "finished") {
+    logger.push("Campaign is finished. Deleted");
+    console.log(logger.join(", "));
+    return res.json(await sql.deleteCampaign(params.id));
+  }
+
+  if (camp[0].status === "live") {
+    //need to return funds here
+    //1. Send ban returns trx hash
+    const eggCreatorWallet = await sql.getUserById(camp[0].user);
+    if (!eggCreatorWallet) {
+      logger.push("Couldn't find creator of the egg");
+      console.log(logger.join(", "));
+      return res.status(400).json("Couldn't find creator of the egg");
+    }
+    if (camp[0].prizepool === 0) {
+      console.log("Nothing to send");
+    }
+    const trxHash = await ban
+      .sendBananoWithdrawalFromSeed(
+        seed,
+        1,
+        eggCreatorWallet[0].address,
+        campaign[0].prizepool
+      )
+      .catch((e) => console.log(e));
+
+    if (!trxHash) {
+      logger.push("Banano API error");
+      console.log(logger.join(", "));
+      return res.status(400).json({ error: "Banano API error" });
+    }
+    console.log(logger.join(", "));
+    return res.json(await sql.deleteCampaign(params.id));
+  }
+});
+
+app.put("/campaigns", async (req, res) => {
+  const logger = [];
+  const params = req.query;
+  const body = req.body;
+  !body.id && (body.id = params.id);
+
+  if (!params.id) {
+    return res.status(400).json({ error: "Campaign id was not provided" });
+  }
+  logger.push(`Requested update of campaign ${params.id}`);
+  const camp = await sql.getCampaignById(params.id);
+  if (camp[0].status === "finished") {
+    logger.push(`This BanEgg was found. No point to update it`);
+    console.log(logger.join(", "));
+    return res
+      .status(400)
+      .json({ error: "This BanEgg was found. No point to update it" });
+  }
+
+  return res.json(await sql.editCampaign(body));
 });
 
 app.post("/campaigns-by-url", async (req, res) => {
