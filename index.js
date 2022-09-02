@@ -215,8 +215,9 @@ app.post("/check-campaign-payment", async (req, res) => {
           )
           .then((banApiResult) => {
             console.log("Pending recieved");
+            console.log(banApiResult);
             sql
-              .updateCampaignStatus({ id: campId, status: "live" })
+              .updateCampaignStatusAndTrx({ id: campId, status: "live", hide_trx: banApiResult.receiveBlocks[0] })
               .then((sqlResult) => {
                 console.log("Successfull payment. Campaign is live");
                 return res.send({
@@ -281,11 +282,14 @@ app.post("/find", async (req, res) => {
     id: campId,
     url: campaign[0].url,
     egg: campaign[0].egg,
+    claim_amnt: campaign[0].claim_amnt,
+    prizepool: campaign[0].prizepool,
+    user_id: campaign[0].user_id,
+    status: "finished",
     claimed_by: clientWallet,
     claimed_date: new Date().toISOString(),
-    status: "finished",
-    hideTrxHash: campaign[0].hideTrxHash,
-    claimTrxHash: trxHash,
+    hide_trx: campaign[0].hide_trx,
+    claim_trx: trxHash
   });
   return res.json({ status: campUpdated.status, hash: trxHash });
 });

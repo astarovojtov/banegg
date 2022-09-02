@@ -98,19 +98,32 @@ async function createCampaign(campaign) {
   return sql`insert into campaigns ${sql(campaign)} returning *`;
 }
 async function updateCampaign(campaign) {
-  const camp = await sql`select * from campaigns where id = ${campaign.id}`;
-  const mergedCamp = { ...camp[0], ...campaign };
-  console.log(mergedCamp);
-  return sql`update campaigns set ${sql(
-    mergedCamp,
-    "url",
-    "egg",
-    "claim_amnt",
-    "claimed_by",
-    "claimed_date",
-    "status",
-    "trxHash"
-  )}
+  // const camp = await sql`select * from campaigns where id = ${campaign.id}`;
+  // const mergedCamp = { ...camp[0], ...campaign };
+
+  // const setColValStr = [];
+  // Object.keys(campaign).forEach( key => {
+  //   if (campaign[key]) {
+  //     setColValStr.push(`${key} = "${campaign[key]}"`);
+  //   }
+  // });
+  // console.log(setColValStr.join(', '));
+  // return sql`update campaigns set 
+  //   ${setColValStr.join(', ')}
+  //       where id = ${campaign.id} returning *`;
+  const campRemovedNulls = {};
+  const tableNames = [];
+  Object.keys(campaign).forEach( key => {
+    if (campaign[key]) {
+      campRemovedNulls[key] = campaign[key];
+      tableNames.push(key);
+    }
+  })
+  return sql`update campaigns set ${sql(campRemovedNulls)}  where id = ${campaign.id} returning *`
+}
+
+function updateCampaignStatusAndTrx(campaign) {
+  return sql`update campaigns set status = ${campaign.status}, hide_trx = ${campaign.hide_trx}
         where id = ${campaign.id} returning *`;
 }
 
@@ -151,5 +164,6 @@ module.exports = {
   saveUserToken: saveUserToken,
   getFoundEggs: getFoundEggs,
   editCampaign: editCampaign,
-  getUserById: getUserById
+  getUserById: getUserById,
+  updateCampaignStatusAndTrx: updateCampaignStatusAndTrx,
 };
