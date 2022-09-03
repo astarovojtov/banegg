@@ -423,7 +423,7 @@ function renderFoundHistory(camps) {
       html: `<span>${camp.url}</span><span>#${camp.egg}</span>`,
     });
     const bounty = dom.createElement("p", {
-      text: `Bounty: ${camp.claim_amnt}`,
+      text: `Bounty: ${camp.prizepool}`,
     });
 
     card.append(header);
