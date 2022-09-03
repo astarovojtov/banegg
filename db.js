@@ -85,7 +85,7 @@ function getCampaigns() {
   return sql`select * from campaigns`;
 }
 function getAllCampaigns() {
-  return sql`select url from campaigns where claim_amnt > 0`;
+  return sql`select url from campaigns where status = hidden`;
 }
 function countClaim(campaignId) {
   return sql`update campaigns set prizepool = prizepool - claim_amnt where id = ${campaignId} returning *`;
