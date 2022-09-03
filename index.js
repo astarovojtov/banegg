@@ -217,9 +217,9 @@ app.post("/check-campaign-payment", async (req, res) => {
             console.log("Pending recieved");
             console.log(banApiResult);
             sql
-              .updateCampaignStatusAndTrx({ id: campId, status: "live", hide_trx: banApiResult.receiveBlocks[0] })
+              .updateCampaignStatusAndTrx({ id: campId, status: "hidden", hide_trx: banApiResult.receiveBlocks[0] })
               .then((sqlResult) => {
-                console.log("Successfull payment. Campaign is live");
+                console.log("Successfull payment. BanEgg is hidden");
                 return res.send({
                   message: "Payment success. BanEgg is hidden",
                 });
@@ -257,11 +257,11 @@ app.post("/find", async (req, res) => {
       .json({ error: "This egg was already found by someone" });
   }
 
-  if (campaign[0].status !== "live") {
+  if (campaign[0].status !== "hidden") {
     console.log(campaign[0]);
-    return res.status(400).json({ error: "No live campaigns found" });
+    return res.status(400).json({ error: "No active campaigns found" });
   }
-  logger.push(`Campaign live`);
+  logger.push(`BanEgg is hidden`);
 
   //1. Send ban returns trx hash
   const trxHash = await ban
@@ -285,7 +285,7 @@ app.post("/find", async (req, res) => {
     claim_amnt: campaign[0].claim_amnt,
     prizepool: campaign[0].prizepool,
     user_id: campaign[0].user_id,
-    status: "finished",
+    status: "found",
     claimed_by: clientWallet,
     claimed_date: new Date().toISOString(),
     hide_trx: campaign[0].hide_trx,
@@ -307,13 +307,17 @@ app.delete("/campaigns", async (req, res) => {
   logger.push(`Requested deletion of campaign ${params.id}`);
 
   const camp = await sql.getCampaignById(params.id);
-  if (camp[0].status === "finished") {
-    logger.push("Campaign is finished. Deleted");
+  if (camp[0].status !== "found" && camp[0].status !== "hidden") {
+    return res.status(400).json({ error: "BanEgg has invalid status. Contact support"});
+  }
+  if (camp[0].status === "found") {
+    logger.push("Campaign is found. Deleted");
     console.log(logger.join(", "));
-    return res.json(await sql.deleteCampaign(params.id));
+    return res.json({ message: 'Found BanEggs are preserved for statistics purposes'});
+    //return res.json(await sql.deleteCampaign(params.id));
   }
 
-  if (camp[0].status === "live") {
+  if (camp[0].status === "hidden") {
     //need to return funds here
     //1. Send ban returns trx hash
     
@@ -357,7 +361,7 @@ app.put("/campaigns", async (req, res) => {
   }
   logger.push(`Requested update of campaign ${params.id}`);
   const camp = await sql.getCampaignById(params.id);
-  if (camp[0].status === "finished") {
+  if (camp[0].status === "found") {
     logger.push(`This BanEgg was found. No point to update it`);
     console.log(logger.join(", "));
     return res

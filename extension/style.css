@@ -85,6 +85,7 @@ button {
 
   .history-card p, .history-card h2 {
     margin: 3pt 0;
+    overflow-wrap: break-word;
   }
 
   .history-card h2 {

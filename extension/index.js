@@ -78,6 +78,9 @@ dom.byId("history") &&
 document.addEventListener("history-rendered", function (e) {
   dom.byId("history-hidden-btn") &&
     dom.byId("history-hidden-btn").addEventListener("click", async (e) => {
+      document.querySelector(".overlay").classList.remove("invisible");
+      document.querySelector(".loader").classList.remove("invisible");
+      
       chrome.storage.local.get("token", ({ token }) => {
         chrome.storage.local.get("address", ({ address }) => {
           api
@@ -101,6 +104,9 @@ document.addEventListener("history-rendered", function (e) {
                   dom.byId("history-hidden-btn").removeAttribute("disabled");
                 })
                 .catch();
+            }).finally(() => {
+              document.querySelector(".overlay").classList.add("invisible");
+              document.querySelector(".loader").classList.add("invisible");
             });
         });
       });
@@ -236,7 +242,6 @@ function setPaymentCountDown() {
   const timeoutDate = new Date();
   timeoutDate.setMinutes(new Date().getMinutes() + 10);
   let timeLeft = timeoutDate.getTime() - new Date().getTime();
-  console.log(timeLeft);
 
   const countdown = setInterval(() => {
     timeLeft = timeoutDate.getTime() - new Date().getTime();
@@ -250,15 +255,6 @@ function setPaymentCountDown() {
   }, 1000);
 }
 function renderHiddenHistory(camps) {
-  /*
-    claim_amnt: 1
-    egg: "qe12qe"
-    id: 3
-    prizepool: 1
-    status: "live"
-    url: "https://yet-another-ban-faucet.herokuapp.com"
-    user_id: 1
-*/
   const section = dom.byId("hidden-history");
   section.innerHTML = "";
   camps.length > 0 &&
@@ -289,7 +285,7 @@ function renderHiddenHistory(camps) {
       card.append(hash);
       card.append(bounty);
 
-      if (camp.status === "finished") {
+      if (camp.status === "found") {
         const date =
           new Date(camp.claimed_date).getTime() === 0
             ? "Not provided"
@@ -323,10 +319,15 @@ function renderHiddenHistory(camps) {
         editBtn.remove();
 
         okBtn.addEventListener("click", function (e) {
+          document.querySelector(".overlay").classList.remove("invisible");
+          document.querySelector(".loader").classList.remove("invisible");
+
           api.delete(`${apiHost}/campaigns?id=${camp.id}`).then((res) => {
             if (res.status === 200) {
               popup.remove();
               card.remove();
+              document.querySelector(".overlay").classList.add("invisible");
+              document.querySelector(".loader").classList.add("invisible");
             }
           });
         });
@@ -361,6 +362,8 @@ function renderHiddenHistory(camps) {
         const okBtn = dom.createElement("button", { text: "Save" });
         const cancelBtn = dom.createElement("button", { text: "Cancel" });
         okBtn.addEventListener("click", function (e) {
+          document.querySelector(".overlay").classList.remove("invisible");
+          document.querySelector(".loader").classList.remove("invisible");
           //update camp
           const newUrl = document.querySelector("[data-edit=url]").value;
           const newHash = document.querySelector("[data-edit=hash]").value;
@@ -383,6 +386,9 @@ function renderHiddenHistory(camps) {
               card.append(deleteBtn);
               card.append(editBtn);
               popup.remove();
+            }).finally(() => {
+              document.querySelector(".overlay").classList.add("invisible");
+              document.querySelector(".loader").classList.add("invisible");
             });
         });
         cancelBtn.addEventListener("click", function (e) {

@@ -1,10 +1,8 @@
 let color = "#3aa757";
 const apiHost = "https://banegg.herokuapp.com";
 //const apiHost = "http://localhost:5000";
-chrome.runtime.onInstalled.addListener(() => {});
 
 chrome.runtime.onStartup.addListener(async () => {
-  console.log("Starting up");
   //query all campaigns and save in storage to minify request load on DB
   fetch(`${apiHost}/campaignsUrl`)
     .then((res) => res.json())
@@ -48,7 +46,6 @@ chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
       body: JSON.stringify({ url: host, hash: hash }),
     })
       .then((res) => {
-        console.log(res);
         if (!res.ok) {
           return Promise.reject(res);
         }
@@ -70,7 +67,7 @@ chrome.tabs.onUpdated.addListener(async (id, changeInfo, tab) => {
       .catch((response) => {
         const statusText = response.statusText;
         response.json().then((e) => {
-          console.log(statusText, e.message);
+          // console.log(statusText, e.message);
         });
       });
   });

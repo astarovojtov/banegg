@@ -79,7 +79,7 @@ function getCampaignsByUrl(url) {
 function getCampaignsByUrlEgg(url, egg) {
   return sql`select * from campaigns where url LIKE ${
     "%" + url + "%"
-  } and egg = ${egg} and status = 'live'`;
+  } and egg = ${egg} and status = 'hidden'`;
 }
 function getCampaigns() {
   return sql`select * from campaigns`;
