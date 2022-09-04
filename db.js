@@ -1,53 +1,11 @@
 const postgres = require("postgres");
-
-//ElephantSQL sign in with google as blew
-
-const createUsers =
-  'CREATE TABLE IF NOT EXISTS User ("userId" SERIAL PRIMARY KEY,"address" varchar(100) NOT NULL)';
-const createCampaigns =
-  'CREATE TABLE IF NOT EXISTS Campaigns ("id" SERIAL PRIMARY KEY, "url" text NOT NULL, "egg" varchar(100) NOT NULL, claim_amount smallint)';
 const sql = postgres({
   host: "raja.db.elephantsql.com",
   database: "wktpcfcf",
   username: "wktpcfcf",
-  password: "1FL5hTzgisTkZXCAnp_P0dMiQGXDn3KF",
+  password: process.env.DB_PASS,
 });
 
-function insertDummyUsers() {
-  const users = [
-    {
-      address:
-        "ban_164pii33414t9gkfs6cgqeiqakjojkxfjowtjiwkf6gf8wcfjf8wpn66z8kj",
-    },
-    {
-      address:
-        "ban_3gahaiusraz8qnotf3skqn3myo74o9f7hroqw8hhny51zkkx5ikbxsbat69c",
-    },
-    {
-      address:
-        "ban_3jo4o7j3z398xy4ywmjnaoqwfo1otnyrr4ubmd3pyshggf34hhcreuc6zkcw",
-    },
-  ];
-  return sql`insert into users ${sql(users)}`;
-}
-
-function insertDummyCampaigns() {
-  const campaigns = [
-    {
-      url: "https://banano.cc",
-      egg: "dnfgoe",
-      claim_amnt: 5,
-      user_id: 1,
-    },
-    {
-      url: "https://banhub.com",
-      egg: "3fr3grg",
-      claim_amnt: 1,
-      user_id: 2,
-    },
-  ];
-  return sql`insert into campaigns ${sql(campaigns)}`;
-}
 function createUser(address) {
   const newUser = { address: address };
   return sql`insert into users ${sql(newUser)} returning *`;
@@ -65,8 +23,6 @@ function getUsers() {
   return sql`select * from users`;
 }
 function saveUserToken(userId, token) {
-  console.log("db -> ");
-  console.log(userId, token);
   return sql`update users set token = ${token} where id = ${userId}`;
 }
 function getCampaignById(id) {
@@ -98,19 +54,6 @@ async function createCampaign(campaign) {
   return sql`insert into campaigns ${sql(campaign)} returning *`;
 }
 async function updateCampaign(campaign) {
-  // const camp = await sql`select * from campaigns where id = ${campaign.id}`;
-  // const mergedCamp = { ...camp[0], ...campaign };
-
-  // const setColValStr = [];
-  // Object.keys(campaign).forEach( key => {
-  //   if (campaign[key]) {
-  //     setColValStr.push(`${key} = "${campaign[key]}"`);
-  //   }
-  // });
-  // console.log(setColValStr.join(', '));
-  // return sql`update campaigns set 
-  //   ${setColValStr.join(', ')}
-  //       where id = ${campaign.id} returning *`;
   const campRemovedNulls = {};
   const tableNames = [];
   Object.keys(campaign).forEach( key => {

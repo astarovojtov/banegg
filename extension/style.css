@@ -112,3 +112,9 @@ button {
   #history-message-strip {
     text-align: center;
   }
+
+  #hide-message-strip {
+    text-align: center;
+    color: red;
+  }
+  

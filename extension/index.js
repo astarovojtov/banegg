@@ -138,6 +138,9 @@ document.addEventListener("about-rendered", function (e) {
         dom.byId("banegg-content").replaceChildren(div);
         /******** Hide button listener *********/
         dom.byId("hide").addEventListener("click", function (e) {
+          const msgStrip = dom.byId('hide-message-strip');
+          msgStrip.innerText = '';
+          msgStrip.classList.add('invisible');
           document.querySelector(".overlay").classList.remove("invisible");
           document.querySelector(".loader").classList.remove("invisible");
 
@@ -147,17 +150,33 @@ document.addEventListener("about-rendered", function (e) {
           const prizepool = dom.byId("prizepool").value;
 
           if (!address || !address.match("ban_")) {
+            msgStrip.classList.remove('invisible');
+            msgStrip.innerText = 'Invalid address';
+            document.querySelector(".overlay").classList.add("invisible");
+            document.querySelector(".loader").classList.add("invisible");
             return;
           }
           if (!url || url.length < 4) {
+            msgStrip.classList.remove('invisible');
+            msgStrip.innerText = 'Invalid url';
+            document.querySelector(".overlay").classList.add("invisible");
+            document.querySelector(".loader").classList.add("invisible");
             return;
           }
 
           if (!hash || hash.length < 4) {
+            msgStrip.classList.remove('invisible');
+            msgStrip.innerText = 'Invalid hash';
+            document.querySelector(".overlay").classList.add("invisible");
+            document.querySelector(".loader").classList.add("invisible");
             return;
           }
 
           if (!prizepool) {
+            msgStrip.classList.remove('invisible');
+            msgStrip.innerText = 'Please, specify bounty';
+            document.querySelector(".overlay").classList.add("invisible");
+            document.querySelector(".loader").classList.add("invisible");
             return;
           }
 
@@ -202,6 +221,7 @@ document.addEventListener("about-rendered", function (e) {
                     const p = dom.createElement("p", { text: res.message });
                     dom.byId("payment-status").append(p);
                     dom.byId("payment-status").classList.remove("invisible");
+                    chrome.storage.local.set({ token: res.token });
                   } catch (e) {
                     console.log(e);
                   }

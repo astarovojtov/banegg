@@ -199,9 +199,20 @@ app.post("/check-campaign-payment", async (req, res) => {
             sql
               .updateCampaignStatusAndTrx({ id: campId, status: "hidden", hide_trx: banApiResult.receiveBlocks[0] })
               .then((sqlResult) => {
-                console.log("Successfull payment. BanEgg is hidden");
+                const user = await sql.getUser(clientWallet);
+                const token = jwt.sign(
+                  { user_id: user[0].id },
+                  "s0m3-rand-0mt0-k3nn",
+                  {
+                    expiresIn: "24h",
+                  }
+                );
+                
+                await sql.saveUserToken(user[0].id, token);
+                
                 return res.send({
                   message: "Payment success. BanEgg is hidden",
+                  token: token
                 });
               });
           });
@@ -389,7 +400,7 @@ app.post("/login", async (req, res) => {
         if (currentRep !== info.representative) {
           clearInterval(interval);
           const user = await sql.getUser(clientWallet);
-          console.log("user ", user);
+
           const token = jwt.sign(
             { user_id: user[0].id },
             "s0m3-rand-0mt0-k3nn",
@@ -397,7 +408,7 @@ app.post("/login", async (req, res) => {
               expiresIn: "24h",
             }
           );
-          console.log(token);
+          
           await sql.saveUserToken(user[0].id, token);
           return res.json({ token: token });
         }
