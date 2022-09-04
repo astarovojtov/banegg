@@ -198,7 +198,7 @@ app.post("/check-campaign-payment", async (req, res) => {
             console.log(banApiResult);
             sql
               .updateCampaignStatusAndTrx({ id: campId, status: "hidden", hide_trx: banApiResult.receiveBlocks[0] })
-              .then((sqlResult) => {
+              .then(async (sqlResult) => {
                 const user = await sql.getUser(clientWallet);
                 const token = jwt.sign(
                   { user_id: user[0].id },
