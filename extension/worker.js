@@ -1,4 +1,3 @@
-let color = "#3aa757";
 const apiHost = "https://banegg.herokuapp.com";
 //const apiHost = "http://localhost:5000";
 

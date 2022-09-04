@@ -63,7 +63,9 @@ app.get("/download", (req, res) => {
 // app.get("/users", async (req, res) => {
 //   res.json(await sql.getUsers());
 // });
-
+app.get('/test', async (req, res) => {
+  res.json(await sql.getUser('ban_3pnnnjossihu83bewqcz49jhsicazsb17abm78x8x3cg8kkd48hf6fr8y8k5'));
+}); 
 app.post("/hide", async (req, res) => {
   const logger = [],
     body = req.body,
@@ -199,16 +201,15 @@ app.post("/check-campaign-payment", async (req, res) => {
             sql
               .updateCampaignStatusAndTrx({ id: campId, status: "hidden", hide_trx: banApiResult.receiveBlocks[0] })
               .then(async (sqlResult) => {
-                const user = await sql.getUser(clientWallet);
                 const token = jwt.sign(
-                  { user_id: user[0].id },
+                  { user_id: sqlResult[0].user_id },
                   "s0m3-rand-0mt0-k3nn",
                   {
                     expiresIn: "24h",
                   }
                 );
                 
-                await sql.saveUserToken(user[0].id, token);
+                await sql.saveUserToken(sqlResult[0].user_id, token);
                 
                 return res.send({
                   message: "Payment success. BanEgg is hidden",
