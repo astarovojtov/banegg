@@ -87,8 +87,6 @@ function getFoundEggs(address) {
 }
 module.exports = {
   sql: sql,
-  insertDummyUsers: insertDummyUsers,
-  insertDummyCampaigns: insertDummyCampaigns,
   createUser: createUser,
   getUser: getUser,
   deleteUser: deleteUser,
