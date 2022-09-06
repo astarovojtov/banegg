@@ -55,6 +55,6 @@ const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ address: address }),
-    }).then((res) => res.json());
+    });
   },
 };

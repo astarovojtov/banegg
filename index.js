@@ -112,7 +112,7 @@ app.post("/hide", async (req, res) => {
   //Create user if doesn't exist
   let user = await sql.getUser(address);
   if (user.length === 0) {
-    const user = await sql.createUser(address);
+    user = await sql.createUser(address);
     console.log("New user created => ", user);
   }
 
@@ -122,8 +122,10 @@ app.post("/hide", async (req, res) => {
     claim_amnt: claim_amnt,
     prizepool: prizepool,
     user_id: user.pop().id,
+    status: 'pending'
   });
   newCamp = newCamp.pop();
+  console.log('New BanEgg created => ', newCamp);
   //append campaign id to payment raw
   //Generate QR for payment
   //string - 'ban:ban_address?amount=amount_raw'
@@ -139,6 +141,15 @@ app.post("/hide", async (req, res) => {
     console.log(logger.join(" "));
     return res.send({ qr: url, amountRaw: amountSliced, id: newCamp.id });
   });
+});
+app.post("/cancel-payment", async (req, res) => {
+  const campId = req.body && req.body.id && sanitize(req.body.id);
+  sql.updateCampaignStatus({ id: campId, status: 'cancelled'}).then( () => {
+    return res.json({ message: 'BanEgg cancelled'});
+  }).catch( e => {
+    console.log(e);
+    return res.status(400).json({ error: 'Couldn\'t cancel payment', dbMsg: e });
+  })
 });
 
 app.post("/check-campaign-payment", async (req, res) => {
@@ -157,13 +168,22 @@ app.post("/check-campaign-payment", async (req, res) => {
       "Awaiting payment. Minutes left: ",
       (pollingPaymentFinishedAt - new Date()) / 1000 / 60
     );
+    
+    sql.getCampaignById(campId).then( camp => {
+      if(camp[0].status === 'cancelled') {
+        clearInterval(interval);
+        console.log('Payment cancelled by user', camp[0] && camp[0].id)
+      }
+    })
+
     if (pollingPaymentFinishedAt < new Date()) {
       console.log(
         "Polling timed out ",
         pollingPaymentFinishedAt.toLocaleString()
       );
-      sql
-        .updateCampaignStatus({ id: campId, status: "no_payment" })
+
+
+      sql.updateCampaignStatus({ id: campId, status: "no_payment" })
         .then((sqlResult) => {
           clearInterval(interval);
           return res
@@ -172,6 +192,7 @@ app.post("/check-campaign-payment", async (req, res) => {
         });
     }
     console.log("Querying BanEgg wallet pending");
+      
     ban.getAccountsPending([banEggWallet], 10).then((response) => {
       // look up for trx from clients wallet with amountSliced that has if of the campaign
       //Handle account has no pengind otherwise Object.keys fails
@@ -401,7 +422,10 @@ app.post("/login", async (req, res) => {
         if (currentRep !== info.representative) {
           clearInterval(interval);
           const user = await sql.getUser(clientWallet);
-
+          console.log(user);
+          if (user.length === 0 ) {
+            return res.status(403).json({ error: 'User is not registered in DB'})
+          }
           const token = jwt.sign(
             { user_id: user[0].id },
             "s0m3-rand-0mt0-k3nn",

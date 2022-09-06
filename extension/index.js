@@ -87,7 +87,12 @@ document.addEventListener("history-rendered", function (e) {
             .getHiddenHistory(token, address)
             .then((camps) => {
               //show camps
-              dom.byId("history-message-strip").innerHTML = "";
+              const msgStrip = dom.byId("history-message-strip");
+              msgStrip.innerHTML = "";
+              if (camps.length === 0) {
+                msgStrip.innerHTML = "No data found";
+                return;
+              }
               renderHiddenHistory(camps);
             })
             .catch((e) => {
@@ -98,10 +103,18 @@ document.addEventListener("history-rendered", function (e) {
               api
                 .login(address)
                 .then((res) => {
-                  chrome.storage.local.set({ token: res.token });
-                  dom.byId("history-message-strip").innerHTML =
-                    "Authorized successfully. Please click button once again to check your BanEggs";
-                  dom.byId("history-hidden-btn").removeAttribute("disabled");
+                  if (res.status === 200) {
+                    res.json().then( (jsonRes) => {
+                      chrome.storage.local.set({ token: jsonRes.token });
+                    });
+                    dom.byId("history-message-strip").innerText =
+                      "Authorized successfully. Please click button once again to check your BanEggs";
+                    dom.byId("history-hidden-btn").removeAttribute("disabled");
+                  }
+                  if (res.status === 403) {
+                    //new user. no point to search for hidden camps until he is regiestered by createing a BanEgg
+                    dom.byId("history-message-strip").innerText = "No data";
+                  }
                 })
                 .catch();
             }).finally(() => {
@@ -118,6 +131,12 @@ document.addEventListener("history-rendered", function (e) {
         api
           .post(`${apiHost}/foundEggs`, { address: address })
           .then((camps) => {
+            const msgStrip = dom.byId("history-message-strip");
+            msgStrip.innerHTML = "";
+            if (camps.length === 0){
+              msgStrip.innerHTML = "No data found";
+              return;
+            }
             renderFoundHistory(camps);
           })
           .catch((e) => console.log(e));
@@ -138,6 +157,9 @@ document.addEventListener("about-rendered", function (e) {
         dom.byId("banegg-content").replaceChildren(div);
         /******** Hide button listener *********/
         dom.byId("hide").addEventListener("click", function (e) {
+          // const cancelPaymentBtn = dom.byId('cancel-payment');
+          const hideBtn = dom.byId('hide');
+          hideBtn.setAttribute('disabled', true);
           const msgStrip = dom.byId('hide-message-strip');
           msgStrip.innerText = '';
           msgStrip.classList.add('invisible');
@@ -147,13 +169,14 @@ document.addEventListener("about-rendered", function (e) {
           const address = dom.byId("address").value;
           let url = dom.byId("url").value;
           let hash = dom.byId("hash").value;
-          const prizepool = dom.byId("prizepool").value;
+          let prizepool = dom.byId("prizepool").value.replace(',', '.');
 
           if (!address || !address.match("ban_")) {
             msgStrip.classList.remove('invisible');
             msgStrip.innerText = 'Invalid address';
             document.querySelector(".overlay").classList.add("invisible");
             document.querySelector(".loader").classList.add("invisible");
+            hideBtn.removeAttribute('disabled');
             return;
           }
           if (!url || url.length < 4) {
@@ -161,6 +184,7 @@ document.addEventListener("about-rendered", function (e) {
             msgStrip.innerText = 'Invalid url';
             document.querySelector(".overlay").classList.add("invisible");
             document.querySelector(".loader").classList.add("invisible");
+            hideBtn.removeAttribute('disabled');
             return;
           }
 
@@ -169,6 +193,7 @@ document.addEventListener("about-rendered", function (e) {
             msgStrip.innerText = 'Invalid hash';
             document.querySelector(".overlay").classList.add("invisible");
             document.querySelector(".loader").classList.add("invisible");
+            hideBtn.removeAttribute('disabled');
             return;
           }
 
@@ -177,6 +202,7 @@ document.addEventListener("about-rendered", function (e) {
             msgStrip.innerText = 'Please, specify bounty';
             document.querySelector(".overlay").classList.add("invisible");
             document.querySelector(".loader").classList.add("invisible");
+            hideBtn.removeAttribute('disabled');
             return;
           }
 
@@ -197,6 +223,8 @@ document.addEventListener("about-rendered", function (e) {
             .then((res) => {
               //TODO: Need to check if status is ok before res.json
               //if (res.status === 'ok')
+              const campaignDiv = document.querySelector('#address').parentNode;
+              campaignDiv.setAttribute('data-egg-id', res.id);
               document.querySelector(".overlay").classList.add("invisible");
               document.querySelector(".loader").classList.add("invisible");
 
@@ -216,6 +244,8 @@ document.addEventListener("about-rendered", function (e) {
                 .then((res) => {
                   //delete qr
                   try {
+                    cancelPaymentBtn.removeAttribute('disabled');
+                    hideBtn.removeAttribute('disabled');
                     img && img.remove();
                     dom.byId("qrCode").classList.add("invisible");
                     const p = dom.createElement("p", { text: res.message });
@@ -228,6 +258,33 @@ document.addEventListener("about-rendered", function (e) {
                 });
             });
         });
+        dom.byId('cancel-payment').addEventListener( 'click', e => {
+          const cancelPaymentBtn = dom.byId('cancel-payment');
+          const hideBtn = dom.byId('hide');
+          cancelPaymentBtn.setAttribute('disabled', true);
+          const campaignDiv = document.querySelector('#address').parentNode;
+          const campId = campaignDiv.getAttribute('data-egg-id');
+          api.post(`${apiHost}/cancel-payment`, { id: campId })
+          .then((res) => {
+              console.log(res);
+              cancelPaymentBtn.removeAttribute('disabled');
+              hideBtn.removeAttribute('disabled');
+              try {
+                const img = document.querySelector('#qrCode img');
+                img && img.remove();
+                dom.byId("qrCode").classList.add("invisible");
+                const p = dom.createElement("p", { text: res.message });
+                dom.byId("payment-status").append(p);
+                dom.byId("payment-status").classList.remove("invisible");
+                chrome.storage.local.set({ token: res.token });
+              } catch (e) {
+                console.log(e);
+              }
+          })
+          .catch( e=> {
+            console.log(e);
+          })
+        })
       });
     });
 });
@@ -268,6 +325,10 @@ function setPaymentCountDown() {
     let mins = Math.floor((timeLeft / 1000 / 60) % 60);
     let secs = Math.floor((timeLeft / 1000) % 60);
     if (mins === 0 && secs === 0) {
+      clearInterval(countdown);
+    }
+    if (document.querySelector('.mins').offsetParent === null) {
+      //element is hidden
       clearInterval(countdown);
     }
     document.querySelector(".mins").innerText = mins;
